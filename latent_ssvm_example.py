@@ -16,7 +16,11 @@ if __name__ == '__main__':
                             tol=0.1, n_jobs=4, inference_cache=100)
     clf = LatentSSVM(base_clf, latent_iter=5)
 
-    X, Y, H = load_data()
+    X, H = load_data(1)
+
+    Y = []
+    for h in H:
+        Y.append(np.unique(h))
 
     x_train = X[:400]
     y_train = Y[:400]

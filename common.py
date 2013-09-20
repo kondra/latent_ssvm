@@ -4,6 +4,7 @@ import numpy as np
 
 base = '../data/'
 
+
 def compute_error(Y, Y_pred):
     err = 0.0
     N = len(Y)
@@ -16,10 +17,10 @@ def compute_error(Y, Y_pred):
     return err
 
 
-def load_data():
-    unary_filename = base + 'unary10_e1.txt'
-    pairwise_filename = base + 'pairwise10_e1.txt'
-    label_filename = base + 'labels10_e1.txt'
+def load_data(dataset):
+    unary_filename = base + 'unary10_e%d.txt' % dataset
+    pairwise_filename = base + 'pairwise10_e%d.txt' % dataset
+    label_filename = base + 'labels10_e%d.txt' % dataset
 
     unary = np.genfromtxt(unary_filename)
     pairwise = np.genfromtxt(pairwise_filename)
@@ -38,4 +39,3 @@ def load_data():
         Y.append(y - 1)
 
     return X_structured, Y
-

@@ -11,13 +11,12 @@ from common import compute_error
 
 if __name__ == '__main__':
     crf = EdgeCRF(n_states=10, n_features=10, n_edge_features=2,
-                  inference_method='qpbo',
-                  class_weight=np.repeat(0.1, 10))
+                  inference_method='qpbo')
     clf = OneSlackSSVM(crf, max_iter=10000, C=0.01, verbose=2,
                        tol=0.1, show_loss_every=5, n_jobs=4,
                        inference_cache=100)
 
-    X, Y = load_data()
+    X, Y = load_data(1)
 
     x_train, x_test, y_train, y_test = train_test_split(X, Y,
                                                         train_size=100)
