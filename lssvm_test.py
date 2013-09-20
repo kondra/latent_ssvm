@@ -46,7 +46,7 @@ if __name__ == '__main__':
             results[dataset - 1, j] = compute_error(h_test, h_pred)
             timestamps[dataset - 1, j] = stop - start
 
-            print 'Dataset: %d, nfull=%d, error=%f, time=%f' % (dataset, nfull, results[dataset - 1, j], timestampts[dataset - 1, j])
+            print 'Dataset: %d, nfull=%d, error=%f, time=%f' % (dataset, nfull, results[dataset - 1, j], timestamps[dataset - 1, j])
 
     np.savetxt('quality.csv', results, delimiter=',')
     np.savetxt('timestamps.csv', timestamps, delimiter=',')
