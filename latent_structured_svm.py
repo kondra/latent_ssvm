@@ -1,6 +1,6 @@
 ######################
 # (c) 2012 Andreas Mueller <amueller@ais.uni-bonn.de>
-#
+# (c) 2013 Dmitry Kondrashkin <kondra2lp@gmail.com>
 #
 
 
@@ -18,11 +18,6 @@ class LatentSSVM(BaseSSVM):
     latent variable completion for the ground truth and
     learning the parameters with the latent variables held fixed
     using the ``base_ssvm`` solver.
-
-    The model is expected to know how to initialize itself
-    - it should provide a ``init_latent`` procedure.  Optionally the ``H_init``
-    parameter can be passed to ``fit``, to explicitly initialize the latent
-    variables in the first iteration.
 
     If the base_ssvm is an n-slack SSVM, the current constraints
     will be adjusted after recomputing the latent variables H.
@@ -46,16 +41,14 @@ class LatentSSVM(BaseSSVM):
         The learned weights of the SVM.
     """
 
-    def __init__(self, base_ssvm, latent_iter=5, logger=None):
+    def __init__(self, base_ssvm, latent_iter=5, verbose=0, logger=None):
         self.base_ssvm = base_ssvm
         self.latent_iter = latent_iter
         self.logger = logger
+        self.verbose = verbose
 
-    def fit(self, X, Y, H_def, H_init=None, initialize=True):
+    def fit(self, X, Y, H_def):
         """Learn parameters using the concave-convex procedure.
-
-        If no H_init is given, the latent variables are initialized
-        using the ``init_latent`` method of the model.
 
         Parameters
         ----------
@@ -67,12 +60,9 @@ class LatentSSVM(BaseSSVM):
             Training labels. Contains the strctured labels for inputs in X.
             Needs to have the same length as X.
 
-        H_init : iterable, optional
-            Initial values for the latent variables.
-
-        initialize : boolean, default=True
-            Whether to initialize the model for the data.
-            Leave this true except if you really know what you are doing.
+        H_def: iterable
+            Labels for full-labeles samples. (known hidden variables)
+            Used for heterogenous training.
         """
 
         self.model.initialize(X, Y)
@@ -89,13 +79,16 @@ class LatentSSVM(BaseSSVM):
                 X1.append(X[i])
                 H1.append(h)
 
-        self.base_ssvm.C = 1
-        self.base_ssvm.fit(X1, H1)
-        w = self.base_ssvm.w
-        self.base_ssvm.C = 0.01
+        if len(X1) > 0:
+            C = self.base_ssvm.C
+            self.base_ssvm.C = 1
+            self.base_ssvm.fit(X1, H1)
+            w = self.base_ssvm.w
+            self.base_ssvm.C = C
 
         for iteration in xrange(self.latent_iter):
-            print("LATENT SVM ITERATION %d" % iteration)
+            if self.verbose:
+                print("LATENT SVM ITERATION %d" % iteration)
             # find latent variables for ground truth:
             H_new = []
             for x, y, h in zip(X, Y, H_def):
@@ -106,10 +99,12 @@ class LatentSSVM(BaseSSVM):
 
             changes = [np.any(h_new != h) for h_new, h in zip(H_new, H)]
             if not np.any(changes):
-                print("no changes in latent variables of ground truth."
-                      " stopping.")
+                if self.verbose:
+                    print("no changes in latent variables of ground truth."
+                          " stopping.")
                 break
-            print("changes in H: %d" % np.sum(changes))
+            if self.verbose:
+                print("changes in H: %d" % np.sum(changes))
 
             # update constraints:
             if isinstance(self.base_ssvm, NSlackSSVM):
