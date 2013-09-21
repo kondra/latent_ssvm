@@ -38,9 +38,11 @@ def weak_from_hidden(H):
     return Y
 
 
-def test_latent(full_labeled, train_size):
+def test_latent():
     results = np.zeros((18, 7))
     timestamps = np.zeros((18, 7))
+    full_labeled = np.array([0, 2, 4, 10, 25, 100, 400])
+    train_size = 400
 
     for dataset in xrange(1, 19):
         X, H = load_data(dataset)
@@ -77,9 +79,11 @@ def test_latent(full_labeled, train_size):
     return results, timestamps
 
 
-def test_ssvm(full_labeled, train_size):
+def test_ssvm():
     results = np.zeros((18, 7))
     timestamps = np.zeros((18, 7))
+    full_labeled = np.array([2, 4, 10, 25, 100, 400])
+    train_size = 400
 
     for dataset in xrange(1, 19):
         X, Y = load_data(dataset)
@@ -112,10 +116,7 @@ def test_ssvm(full_labeled, train_size):
 
 
 if __name__ == '__main__':
-    full_labeled = np.array([0, 2, 4, 10, 25, 100, 400])
-    train_size = 400
+    results, timestamps = test_ssvm()
 
-    results, timestamps = test_ssvm(full_labeled, train_size)
-
-    np.savetxt('ssvm_quality.csv', results, delimiter=',')
-    np.savetxt('ssvm_timestamps.csv', timestamps, delimiter=',')
+    np.savetxt('results/ssvm_quality.csv', results, delimiter=',')
+    np.savetxt('results/ssvm_timestamps.csv', timestamps, delimiter=',')
