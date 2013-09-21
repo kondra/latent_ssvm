@@ -11,7 +11,7 @@ from common import compute_error
 
 if __name__ == '__main__':
     crf = EdgeCRF(n_states=10, n_features=10, n_edge_features=2,
-                  inference_method='qpbo')
+                  inference_method='gco')
     clf = OneSlackSSVM(crf, max_iter=10000, C=0.01, verbose=2,
                        tol=0.1, show_loss_every=5, n_jobs=4,
                        inference_cache=100)
