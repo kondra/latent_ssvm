@@ -5,10 +5,10 @@ from edge_crf import EdgeCRF
 from latent_structured_svm import LatentSSVM
 
 from pystruct.learners import OneSlackSSVM
-from time import time
 
 from common import load_data
 from common import compute_error
+from common import weak_from_hidden
 
 
 def latent_model():
@@ -31,17 +31,9 @@ def ssvm_model():
     return clf
 
 
-def weak_from_hidden(H):
-    Y = []
-    for h in H:
-        Y.append(np.unique(h))
-    return Y
-
-
-def test_latent():
-    results = np.zeros((18, 7))
-    timestamps = np.zeros((18, 7))
-    full_labeled = np.array([0, 2, 4, 10, 25, 100, 400])
+def test_weak_labeled(model_func):
+    results = np.zeros((18, 6))
+    full_labeled = np.array([0, 2, 4, 10, 25, 100])
     train_size = 400
 
     for dataset in xrange(1, 19):
@@ -49,7 +41,7 @@ def test_latent():
         Y = weak_from_hidden(H)
 
         for j, nfull in enumerate(full_labeled):
-            clf = ssvm_model()
+            clf = model_func()
 
             x_train = X[:train_size]
             y_train = Y[:train_size]
@@ -61,28 +53,23 @@ def test_latent():
                 h_train[i] = None
 
             try:
-                start = time()
                 clf.fit(x_train, y_train, h_train)
-                stop = time()
                 h_pred = clf.predict_latent(x_test)
 
                 results[dataset - 1, j] = compute_error(h_test, h_pred)
-                timestamps[dataset - 1, j] = stop - start
 
-                print 'dataset=%d, nfull=%d, \
-                       error=%f, time=%f' % (dataset, nfull,
-                                             results[dataset - 1, j],
-                                             timestamps[dataset - 1, j])
+                print 'dataset=%d, nfull=%d, error=%f' % (dataset,
+                                                          nfull,
+                                                          results[dataset - 1, j])
             except ValueError:
                 print 'dataset=%d, nfull=%d: Failed' % (dataset, nfull)
 
-    return results, timestamps
+    return results
 
 
-def test_ssvm():
-    results = np.zeros((18, 7))
-    timestamps = np.zeros((18, 7))
-    full_labeled = np.array([2, 4, 10, 25, 100, 400])
+def test_full_labeled():
+    results = np.zeros((18, 5))
+    full_labeled = np.array([2, 4, 10, 25, 100])
     train_size = 400
 
     for dataset in xrange(1, 19):
@@ -97,26 +84,22 @@ def test_ssvm():
             y_test = Y[(train_size + 1):]
 
             try:
-                start = time()
                 clf.fit(x_train, y_train)
-                stop = time()
                 y_pred = clf.predict(x_test)
 
                 results[dataset - 1, j] = compute_error(y_test, y_pred)
-                timestamps[dataset - 1, j] = stop - start
 
-                print 'dataset=%d, nfull=%d, \
-                       error=%f, time=%f' % (dataset, nfull,
-                                             results[dataset - 1, j],
-                                             timestamps[dataset - 1, j])
+                print 'dataset=%d, nfull=%d, error=%f' % (dataset, nfull,
+                                                          results[dataset - 1, j])
             except ValueError:
                 print 'dataset=%d, nfull=%d: Failed' % (dataset, nfull)
 
-    return results, timestamps
+    return results
 
 
 if __name__ == '__main__':
-    results, timestamps = test_ssvm()
+    results = test_weak_labeled(latent_model)
+    np.savetxt('results/weak_labeled.csv', results, delimiter=',')
 
-    np.savetxt('results/ssvm_quality.csv', results, delimiter=',')
-    np.savetxt('results/ssvm_timestamps.csv', timestamps, delimiter=',')
+    results = test_full_labeled()
+    np.savetxt('results/full_labeled.csv', results, delimiter=',')

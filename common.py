@@ -39,3 +39,10 @@ def load_data(dataset):
         Y.append(y - 1)
 
     return X_structured, Y
+
+
+def weak_from_hidden(H):
+    Y = []
+    for h in H:
+        Y.append(np.unique(h))
+    return Y
