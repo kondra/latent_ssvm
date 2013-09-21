@@ -47,7 +47,7 @@ class LatentSSVM(BaseSSVM):
         self.logger = logger
         self.verbose = verbose
 
-    def fit(self, X, Y, H_def, initialize=True):
+    def fit(self, X, Y, H_def, initialize=True, pass_labels=False):
         """Learn parameters using the concave-convex procedure.
 
         Parameters
@@ -63,6 +63,13 @@ class LatentSSVM(BaseSSVM):
         H_def: iterable
             Labels for full-labeles samples. (known hidden variables)
             Used for heterogenous training.
+
+        initialize: boolean
+            Initialize w by first running SSVM.
+
+        pass_labels: boolean
+            Pass hidden and original labels to SSVM solver as a tuple.
+            Only use this if you know what you are doing!
         """
 
         self.model.initialize(X, Y)
@@ -78,6 +85,7 @@ class LatentSSVM(BaseSSVM):
             if h is not None:
                 X1.append(X[i])
                 H1.append(h)
+                Y[i] = None
 
         # all data is fully labeled, quit
         if len(X1) == len(X):
@@ -85,7 +93,7 @@ class LatentSSVM(BaseSSVM):
             w = self.base_ssvm.w
             return
 
-        if initialize & len(X1) > 0:
+        if initialize and len(X1) > 0:
             self.base_ssvm.fit(X1, H1)
             w = self.base_ssvm.w
 
@@ -121,11 +129,16 @@ class LatentSSVM(BaseSSVM):
                         constraints[i].append([y_hat, dpsi, loss])
             H = H_new
 
+            if pass_labels:
+                T = zip(H, Y)
+            else:
+                T = H
+
             if iteration > 0:
-                self.base_ssvm.fit(X, H, constraints=constraints,
+                self.base_ssvm.fit(X, T, constraints=constraints,
                                    warm_start="soft", initialize=False)
             else:
-                self.base_ssvm.fit(X, H, constraints=constraints,
+                self.base_ssvm.fit(X, T, constraints=constraints,
                                    initialize=False)
             w = self.base_ssvm.w
             ws.append(w)
