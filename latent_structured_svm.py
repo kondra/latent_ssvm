@@ -47,7 +47,7 @@ class LatentSSVM(BaseSSVM):
         self.logger = logger
         self.verbose = verbose
 
-    def fit(self, X, Y, H_def):
+    def fit(self, X, Y, H_def, initialize=True):
         """Learn parameters using the concave-convex procedure.
 
         Parameters
@@ -79,12 +79,15 @@ class LatentSSVM(BaseSSVM):
                 X1.append(X[i])
                 H1.append(h)
 
-        if len(X1) > 0:
-            C = self.base_ssvm.C
-            self.base_ssvm.C = 1
+        # all data is fully labeled, quit
+        if len(X1) == len(X):
             self.base_ssvm.fit(X1, H1)
             w = self.base_ssvm.w
-            self.base_ssvm.C = C
+            return
+
+        if initialize & len(X1) > 0:
+            self.base_ssvm.fit(X1, H1)
+            w = self.base_ssvm.w
 
         for iteration in xrange(self.latent_iter):
             if self.verbose:
