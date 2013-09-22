@@ -166,7 +166,7 @@ class HCRF(GraphCRF):
                 label_cost[label] = c
             for label in xrange(0, self.n_states):
                 if label not in y[1]:
-                    unary_potentials[:, label] -= 1
+                    unary_potentials[:, label] += 1
 
             edges = edges.copy().astype(np.int32)
             pairwise_potentials = (1000 * pairwise_potentials).copy().astype(
@@ -184,7 +184,7 @@ class HCRF(GraphCRF):
             unary_potentials = (-1000 * unary_potentials).copy().astype(
                 np.int32)
             unary_potentials = unary_potentials.reshape(-1, self.n_states)
-            label_cost = (10 * label_cost).copy().astype(np.int32)
+            label_cost = (1000 * label_cost).copy().astype(np.int32)
 
             y = cut_from_graph_gen_potts(unary_potentials, pairwise_cost,
                                          label_cost=label_cost)
