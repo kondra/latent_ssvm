@@ -13,9 +13,9 @@ from common import compute_error
 if __name__ == '__main__':
     crf = HCRF(n_states=10, n_features=10, n_edge_features=2,
                inference_method='gco')
-    base_clf = OneSlackSSVM(crf, max_iter=500, C=0.01, verbose=2,
-                            tol=0.01, n_jobs=4, inference_cache=100)
-    clf = LatentSSVM(base_clf, latent_iter=3, verbose=2)
+    base_clf = OneSlackSSVM(crf, max_iter=500, C=0.1, verbose=2,
+                            tol=0.001, n_jobs=4, inference_cache=100)
+    clf = LatentSSVM(base_clf, latent_iter=5, verbose=2)
 
     X, H = load_data(1)
 
@@ -30,7 +30,7 @@ if __name__ == '__main__':
     y_test = Y[401:]
     h_test = H[401:]
 
-    for i in xrange(10, len(h_train)):
+    for i in xrange(2, len(h_train)):
         h_train[i] = None
 
     start = time()

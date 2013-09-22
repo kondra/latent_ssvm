@@ -3,6 +3,7 @@ import numpy as np
 from latent_crf import LatentCRF
 from edge_crf import EdgeCRF
 from latent_structured_svm import LatentSSVM
+from heterogenous_crf import HCRF
 
 from pystruct.learners import OneSlackSSVM
 
@@ -31,6 +32,16 @@ def ssvm_model():
     return clf
 
 
+def heterogenous_model():
+    crf = HCRF(n_states=10, n_features=10, n_edge_features=2,
+               inference_method='gco')
+    base_clf = OneSlackSSVM(crf, max_iter=500, C=0.1, verbose=0,
+                            tol=0.001, n_jobs=4, inference_cache=100)
+    clf = LatentSSVM(base_clf, latent_iter=5, verbose=0)
+
+    return clf
+
+
 def test_weak_labeled(model_func):
     results = np.zeros((18, 6))
     full_labeled = np.array([0, 2, 4, 10, 25, 100])
@@ -53,7 +64,9 @@ def test_weak_labeled(model_func):
                 h_train[i] = None
 
             try:
-                clf.fit(x_train, y_train, h_train)
+#                clf.fit(x_train, y_train, h_train)
+                clf.fit(x_train, y_train, h_train,
+                        pass_labels=True, initialize=True)
                 h_pred = clf.predict_latent(x_test)
 
                 results[dataset - 1, j] = compute_error(h_test, h_pred)
@@ -98,8 +111,8 @@ def test_full_labeled():
 
 
 if __name__ == '__main__':
-    results = test_weak_labeled(latent_model)
-    np.savetxt('results/weak_labeled.csv', results, delimiter=',')
+    results = test_weak_labeled(heterogenous_model)
+    np.savetxt('results/heterogenous.csv', results, delimiter=',')
 
-    results = test_full_labeled()
-    np.savetxt('results/full_labeled.csv', results, delimiter=',')
+#    results = test_full_labeled()
+#    np.savetxt('results/full_labeled.csv', results, delimiter=',')
