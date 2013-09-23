@@ -176,7 +176,7 @@ def load_msrc(dataset):
 
 
 def load_syntetic(dataset):
-    filename = base + 'features%d.npz' % dataset
+    filename = base + 'syntetic/features%d.npz' % dataset
     npz = np.load(filename)
     return npz['X'], npz['Y']
 
