@@ -15,7 +15,7 @@ def syntetic():
     crf = EdgeCRF(n_states=10, n_features=10, n_edge_features=2,
                   inference_method='gco')
     clf = OneSlackSSVM(crf, max_iter=10000, C=0.01, verbose=2,
-                       tol=0.1, show_loss_every=5, n_jobs=4,
+                       tol=0.1, show_loss_every=50, n_jobs=4,
                        inference_cache=100)
 
     X, Y = load_syntetic(1)
@@ -45,7 +45,7 @@ def msrc():
     crf = EdgeCRF(n_states=24, n_features=2028, n_edge_features=4,
                   inference_method='gco')
     clf = OneSlackSSVM(crf, max_iter=10000, C=0.01, verbose=2,
-                       tol=0.1, show_loss_every=5, n_jobs=4,
+                       tol=0.1, show_loss_every=50, n_jobs=4,
                        inference_cache=100)
 
     X, Y = load_msrc('train')
