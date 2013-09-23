@@ -172,7 +172,7 @@ def load_msrc(dataset):
         npz = np.load(filename)
         return zip(npz['Xunary_test'],
                    npz['edges_test'],
-                   npz['Xpair_test']), npz['Y_train']
+                   npz['Xpair_test']), npz['Y_test']
 
 
 def load_syntetic(dataset):
