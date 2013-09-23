@@ -17,8 +17,7 @@ def load_syntetic_data(dataset):
 
     X_structured = []
     Y = []
-    edges = pairwise[0:760, 1:3].astype(np.int32)
-    edges = edges - 1
+    edges = pairwise[0:760, 1:3].astype(np.int32) - 1
 
     for i in xrange(800):
         node_features = unary[(i * 400):((i + 1) * 400), 2:]
@@ -99,8 +98,9 @@ def save_train_test_msrc():
 def load_msrc_data():
     # load and transfrom
     msrc_base = base + 'msrc/features/'
-    unary_train_filename = msrc_base + 'unary_train.npz'
-    unary_test_filename = msrc_base + 'unary_test.npz'
+    msrc_base2 = '/mnt/rec/stuff/thesis/msrc_data/'
+    unary_train_filename = msrc_base2 + 'unary_train.npz'
+    unary_test_filename = msrc_base2 + 'unary_test.npz'
     pairwise_filename = msrc_base + 'pairwiseFixed.txt'
     labels_filename = msrc_base + 'labels.txt'
 
@@ -128,7 +128,7 @@ def load_msrc_data():
         ppos = cpos
         while cpos < labels.shape[0] and labels[cpos, 0] == i:
             cpos += 1
-        Y_train.append(labels[ppos:cpos, 2:4])
+        Y_train.append(labels[ppos:cpos, 2:4].astype(np.int32) - 1)
         Xunary_train.append(unary_train[ppos:cpos, 2:])
 
     pbegin = cpos
@@ -136,7 +136,7 @@ def load_msrc_data():
         ppos = cpos
         while cpos < labels.shape[0] and labels[cpos, 0] == i:
             cpos += 1
-        Y_test.append(labels[ppos:cpos, 2:4])
+        Y_test.append(labels[ppos:cpos, 2:4].astype(np.int32) - 1)
         Xunary_test.append(unary_test[(ppos-pbegin):(cpos-pbegin), 2:])
 
     cpos = 0
@@ -144,18 +144,18 @@ def load_msrc_data():
         ppos = cpos
         while cpos < pairwise.shape[0] and pairwise[cpos, 0] == i:
             cpos += 1
-        edges_train.append(pairwise[ppos:cpos, 1:3])
+        edges_train.append(pairwise[ppos:cpos, 1:3].astype(np.int32) - 1)
         Xpair_train.append(pairwise[ppos:cpos, 3:])
 
     for i in xrange(N_train + 1, N_test + 1):
         ppos = cpos
         while cpos < pairwise.shape[0] and pairwise[cpos, 0] == i:
             cpos += 1
-        edges_test.append(pairwise[ppos:cpos, 1:3])
+        edges_test.append(pairwise[ppos:cpos, 1:3].astype(np.int32) - 1)
         Xpair_test.append(pairwise[ppos:cpos, 3:])
 
-    X_train = zip(Xunary_train, edges_train, Xpair_train)
-    X_test = zip(Xunary_test, edges_test, Xpair_test)
+    X_train = (Xunary_train, edges_train, Xpair_train)
+    X_test = (Xunary_test, edges_test, Xpair_test)
 
     return X_train, Y_train, X_test, Y_test
 
@@ -164,11 +164,15 @@ def load_msrc(dataset):
     if dataset == 'train':
         filename = base + 'msrc/train_data.npz'
         npz = np.load(filename)
-        return npz['X_train'], npz['Y_train']
+        return zip(npz['Xunary_train'],
+                   npz['edges_train'],
+                   npz['Xpair_train']), npz['Y_train']
     if dataset == 'test':
         filename = base + 'msrc/test_data.npz'
         npz = np.load(filename)
-        return npz['X_test'], npz['Y_test']
+        return zip(npz['Xunary_test'],
+                   npz['edges_test'],
+                   npz['Xpair_test']), npz['Y_train']
 
 
 def load_syntetic(dataset):
@@ -181,8 +185,12 @@ def save_msrc_to_npz():
     X_train, Y_train, X_test, Y_test = load_msrc_data()
     filename_train = base + 'msrc/train_data'
     filename_test = base + 'msrc/test_data'
-    np.savez(filename_train, X_train=X_train, Y_train=Y_train)
-    np.savez(filename_test, X_test=X_test, Y_test=Y_test)
+    np.savez(filename_train, Xunary_train=X_train[0],
+             edges_train=X_train[1], Xpair_train=X_train[2],
+             Y_train=Y_train)
+    np.savez(filename_test, Xunary_test=X_test[0],
+             edges_test=X_test[1], Xpair_test=X_test[2],
+             Y_test=Y_test)
 
 
 def save_syntetic_to_npz():
