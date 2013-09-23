@@ -66,5 +66,45 @@ def msrc():
     print 'Elapsed time: %f s' % (stop - start)
 
 
+def msrc_test():
+    basedir = '../data/msrc/trainmasks/'
+    quality = []
+
+    Xtest, Ytest = load_msrc('test')
+    Ytest = remove_areas(Ytest)
+    Xtrain, Ytrain = load_msrc('train')
+    Ytrain = remove_areas(Ytrain)
+
+    for n_train in [20, 40, 80, 160, 276]:
+        crf = EdgeCRF(n_states=24, n_features=2028, n_edge_features=4,
+                      inference_method='gco')
+        clf = OneSlackSSVM(crf, max_iter=1000, C=0.01, verbose=0,
+                           tol=0.1, n_jobs=4, inference_cache=100)
+
+        if n_train != 276:
+            train_mask = np.genfromtxt(basedir + 'trainMaskX%d.txt' % n_train)
+            train_mask = train_mask[:277].astype(np.bool)
+        else:
+            train_mask = np.ones(276).astype(np.bool)
+
+        curX = []
+        curY = []
+        for (s, x, y) in zip(train_mask, Xtrain, Ytrain):
+            if s:
+                curX.append(x)
+                curY.append(y)
+
+        clf.fit(curX, curY)
+
+        Ypred = clf.predict(Xtest)
+
+        q = 1 - compute_error(Ytest, Ypred)
+
+        print 'n_train=%d, quality=%f' % (n_train, q)
+        quality.append(q)
+
+    np.savetxt('results/msrc/msrc_full.txt', quality)
+
+
 if __name__ == '__main__':
-    msrc()
+    msrc_test()
