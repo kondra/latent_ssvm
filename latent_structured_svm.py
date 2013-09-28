@@ -41,11 +41,12 @@ class LatentSSVM(BaseSSVM):
         The learned weights of the SVM.
     """
 
-    def __init__(self, base_ssvm, latent_iter=5, verbose=0, logger=None):
+    def __init__(self, base_ssvm, latent_iter=5, verbose=0, tol=0.01, logger=None):
         self.base_ssvm = base_ssvm
         self.latent_iter = latent_iter
         self.logger = logger
         self.verbose = verbose
+        self.tol=tol
 
     def fit(self, X, Y, H_def, initialize=True, pass_labels=False):
         """Learn parameters using the concave-convex procedure.
@@ -65,7 +66,7 @@ class LatentSSVM(BaseSSVM):
             Used for heterogenous training.
 
         initialize: boolean
-            Initialize w by first running SSVM.
+            Initialize w by running SSVM on full-labeled examples.
 
         pass_labels: boolean
             Pass hidden and original labels to SSVM solver as a tuple.
@@ -76,6 +77,8 @@ class LatentSSVM(BaseSSVM):
         w = np.zeros(self.model.size_psi)
         constraints = None
         ws = []
+        w_deltas = []
+        changes_count = []
 
         X1 = []
         H1 = []
@@ -93,9 +96,15 @@ class LatentSSVM(BaseSSVM):
             w = self.base_ssvm.w
             return
 
+        # we have some fully labeled examples
         if initialize and len(X1) > 0:
+            saved_C = self.base_ssvm.C
+            self.base_ssvm.C = 10
             self.base_ssvm.fit(X1, H1)
             w = self.base_ssvm.w
+            self.base_ssvm.C = saved_C
+
+        ws.append(w)
 
         for iteration in xrange(self.latent_iter):
             if self.verbose:
@@ -116,17 +125,19 @@ class LatentSSVM(BaseSSVM):
                 break
             if self.verbose:
                 print("changes in H: %d" % np.sum(changes))
+            changes_count.append(np.sum(changes))
 
             # update constraints:
-            if isinstance(self.base_ssvm, NSlackSSVM):
-                constraints = [[] for i in xrange(len(X))]
-                for sample, h, i in zip(self.base_ssvm.constraints_, H_new,
-                                        np.arange(len(X))):
-                    for constraint in sample:
-                        const = find_constraint(self.model, X[i], h, w,
-                                                constraint[0])
-                        y_hat, dpsi, _, loss = const
-                        constraints[i].append([y_hat, dpsi, loss])
+# seems that this code should not work
+#            if isinstance(self.base_ssvm, NSlackSSVM):
+#                constraints = [[] for i in xrange(len(X))]
+#                for sample, h, i in zip(self.base_ssvm.constraints_, H_new,
+#                                        np.arange(len(X))):
+#                    for constraint in sample:
+#                        const = find_constraint(self.model, X[i], h, w,
+#                                                constraint[0])
+#                        y_hat, dpsi, _, loss = const
+#                        constraints[i].append([y_hat, dpsi, loss])
             H = H_new
 
             if pass_labels:
@@ -142,8 +153,31 @@ class LatentSSVM(BaseSSVM):
                                    initialize=False)
             w = self.base_ssvm.w
             ws.append(w)
+            delta = np.linalg.norm(ws[-1] - ws[-2])
+            w_deltas.append(delta)
+            if self.verbose:
+                print("|w-w_prev|: %f" % delta)
+            if delta < self.tol:
+                if self.verbose:
+                    print("weight vector did not change a lot, break")
+                iteration += 1
+                break
             if self.logger is not None:
                 self.logger(self, iteration)
+
+        self.ws = ws
+        self.w_deltas = w_deltas
+        self.changes_count = changes_count
+        self.iter_done = iteration
+
+    def staged_predict_latent(self, X):
+        # is this ok?
+        for i in xrange(self.iter_done):
+            saved_w = self.base_ssvm.w
+            self.base_ssvm.w = self.ws[i]
+            H = self.base_ssvm.predict(X)
+            self.base_ssvm.w = saved_w
+            yield H
 
     def predict(self, X):
         prediction = self.base_ssvm.predict(X)
@@ -171,6 +205,7 @@ class LatentSSVM(BaseSSVM):
         score : float
             Average of 1 - loss over training examples.
         """
+        # TODO: rewrite this
         losses = [self.model.base_loss(y, y_pred)
                   for y, y_pred in zip(Y, self.predict(X))]
         max_losses = [self.model.max_loss(y) for y in Y]
