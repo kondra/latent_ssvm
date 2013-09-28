@@ -12,17 +12,7 @@ from pystruct.utils import find_constraint
 
 
 class LatentSSVM(BaseSSVM):
-    """Stuctured SVM solver for latent-variable models.
-
-    This is a hard-EM-style algorithm that alternates between
-    latent variable completion for the ground truth and
-    learning the parameters with the latent variables held fixed
-    using the ``base_ssvm`` solver.
-
-    If the base_ssvm is an n-slack SSVM, the current constraints
-    will be adjusted after recomputing the latent variables H.
-    If the base_ssvm is a 1-slack SSVM, the inference cache will
-    be reused. Both methods drastically speed up learning.
+    """
 
     Parameters
     ----------
@@ -35,6 +25,12 @@ class LatentSSVM(BaseSSVM):
     logger : object
         Logger instance.
 
+    verbose : int (default=0)
+        Verbosity level.
+
+    tol : float (default=0.01)
+        Tolerance, when to stop iterations of latent SSVM
+
     Attributes
     ----------
     w : nd-array, shape=(model.size_psi,)
@@ -46,7 +42,7 @@ class LatentSSVM(BaseSSVM):
         self.latent_iter = latent_iter
         self.logger = logger
         self.verbose = verbose
-        self.tol=tol
+        self.tol = tol
 
     def fit(self, X, Y, H_def, initialize=True, pass_labels=False):
         """Learn parameters using the concave-convex procedure.
