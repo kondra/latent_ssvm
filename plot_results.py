@@ -4,9 +4,10 @@ import pylab as pl
 import os
 
 
-def plot_full_weak():
+def plot_syntetic_full_weak():
     # full + weak plotter for syntetic data
     # on different full-labeled training set sizes
+    os.chdir("results/syntetic")
     weak_results = np.genfromtxt('weak_labeled.csv', delimiter=',')
     full_results = np.genfromtxt('full_labeled.csv', delimiter=',')
 
@@ -35,7 +36,9 @@ def plot_full_weak():
     pl.legend(loc='lower right')
 
 
-def plot_heterogenous_weak():
+def plot_syntetic_heterogenous():
+    # plot results from heterogenous lssvm trained on weak labeled data
+    os.chdir("results/syntetic")
     results = np.genfromtxt('heterogenous')
     results = np.reshape(results, (-1, 6))
 
@@ -55,6 +58,8 @@ def plot_heterogenous_weak():
 
 
 def plot_msrc_full():
+    # plot results of ssvm trained on full labeled msrc data
+    os.chdir("results/msrc")
     y = np.genfromtxt('msrc_full.txt')
     x = np.array([0, 20, 40, 80, 160, 276])
 
@@ -68,10 +73,6 @@ def plot_msrc_full():
     pl.xlim([-0.1, 5.1])
 
 if __name__ == '__main__':
-    os.chdir("results/msrc")
-
     plot_msrc_full()
-#    plot_full_weak()
-#    plot_heterogenous_weak()
 
     pl.show()
