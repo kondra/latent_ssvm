@@ -45,7 +45,7 @@ def msrc():
     crf = EdgeCRF(n_states=24, n_features=2028, n_edge_features=4,
                   inference_method='gco')
     clf = OneSlackSSVM(crf, max_iter=10000, C=0.01, verbose=2,
-                       tol=0.1, show_loss_every=50, n_jobs=4,
+                       tol=0.1, n_jobs=4,
                        inference_cache=100)
 
     X, Y = load_msrc('train')
@@ -75,6 +75,8 @@ def msrc_test():
     Xtrain, Ytrain = load_msrc('train')
     Ytrain = remove_areas(Ytrain)
 
+    Ys = []
+
     for n_train in [20, 40, 80, 160, 276]:
         crf = EdgeCRF(n_states=24, n_features=2028, n_edge_features=4,
                       inference_method='gco')
@@ -97,6 +99,7 @@ def msrc_test():
         clf.fit(curX, curY)
 
         Ypred = clf.predict(Xtest)
+        Ys.append(Ypred)
 
         q = 1 - compute_error(Ytest, Ypred)
 
@@ -105,6 +108,9 @@ def msrc_test():
 
     np.savetxt('results/msrc/msrc_full.txt', quality)
 
+    return Ys
+
 
 if __name__ == '__main__':
-    msrc_test()
+#    Ys = msrc_test()
+    msrc()
