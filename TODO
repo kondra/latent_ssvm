@@ -1,2 +1,5 @@
 * add support to superpixels area
 * add model serialization
+* add stopping criterion
+* add more complex loss functions in models
+* review models code
