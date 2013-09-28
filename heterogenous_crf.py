@@ -224,36 +224,32 @@ class HCRF(StructuredModel):
         Parameters
         ----------
         x : tuple
-            Instance of a graph with unary evidence.
-            x=(unaries, edges)
+            Instance of a graph with unary & pairwise potentials.
+            x=(unaries, edges, pairwise)
             unaries are an nd-array of shape (n_nodes, n_states),
             edges are an nd-array of shape (n_edges, 2)
+            pairwise are an nd-array of shape (n_edges, n_states, n_states)
 
         w : ndarray, shape=(size_psi,)
             Parameters for the CRF energy function.
 
         relaxed : bool, default=False
-            Whether relaxed inference should be performed.
-            Only meaningful if inference method is 'lp' or 'ad3'.
-            By default fractional solutions are rounded. If relaxed=True,
-            fractional solutions are returned directly.
+            We do not support it yet.
 
         return_energy : bool, default=False
             Whether to return the energy of the solution (x, y) that was found.
 
         Returns
         -------
-        y_pred : ndarray or tuple
-            By default an inter ndarray of shape=(width, height)
+        y_pred : ndarray
+            By default an integer ndarray of shape=(width, height)
             of variable assignments for x is returned.
-            If ``relaxed=True`` and inference_method is ``lp`` or ``ad3``,
-            a tuple (unary_marginals, pairwise_marginals)
-            containing the relaxed inference result is returned.
-            unary marginals is an array of shape (width, height, n_states),
-            pairwise_marginals is an array of
-            shape (n_states, n_states) of accumulated pairwise marginals.
 
         """
+        if relaxed == True:
+            # we do not support relaxed inference yet
+            raise NotImplementedError
+
         self._check_size_w(w)
         self.inference_calls += 1
         unary_potentials = self._get_unary_potentials(x, w)
