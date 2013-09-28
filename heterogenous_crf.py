@@ -1,27 +1,50 @@
+######################
+# (c) 2012 Andreas Mueller <amueller@ais.uni-bonn.de>
+# (c) 2013 Dmitry Kondrashkin <kondra2lp@gmail.com>
+
 import numpy as np
 
-from pystruct.models.graph_crf import GraphCRF
+from pystruct.models.base import StructuredModel
 from pystruct.inference.inference_methods import inference_dispatch
 from pystruct.models.utils import loss_augment_unaries
 
 
-class HCRF(GraphCRF):
+class HCRF(StructuredModel):
     def __init__(self, n_states=2, n_features=None, n_edge_features=1,
-                 inference_method=None, class_weight=None):
+                 inference_method='gco'):
+        if inference_method != 'gco':
+            # only gco inference_method supported: we need labels costs
+            raise NotImplementedError
         self.all_states = set(range(0, n_states))
         self.n_edge_features = n_edge_features
-        GraphCRF.__init__(self, n_states, n_features, inference_method,
-                          class_weight=class_weight)
-
-    def _set_size_psi(self):
+        self.n_states = n_states
+        self.n_features = n_features
+        self.inference_method = inference_method
+        self.inference_calls = 0
         self.size_psi = (self.n_states * self.n_features +
                          self.n_edge_features)
+        # we do not use class weights now
+        self.class_weight = None
+        self._set_class_weight()
+
+    def _check_size_x(self, x):
+        features = self._get_features(x)
+        if features.shape[1] != self.n_features:
+            raise ValueError("Unary evidence should have %d feature per node,"
+                             " got %s instead."
+                             % (self.n_features, features.shape[1]))
 
     def __repr__(self):
         return ("%s(n_states: %d, inference_method: %s, n_features: %d, "
                 "n_edge_features: %d)"
                 % (type(self).__name__, self.n_states, self.inference_method,
                    self.n_features, self.n_edge_features))
+
+    def _get_edges(self, x):
+        return x[1]
+
+    def _get_features(self, x):
+        return x[0]
 
     def label_from_latent(self, h):
         return np.unique(h)
@@ -189,3 +212,54 @@ class HCRF(GraphCRF):
             y = cut_from_graph_gen_potts(unary_potentials, pairwise_cost,
                                          label_cost=label_cost)
             return y[0].reshape(shape_org)
+
+    def inference(self, x, w, relaxed=False, return_energy=False):
+        """Inference for x using parameters w.
+
+        Finds (approximately)
+        armin_y np.dot(w, psi(x, y))
+        using self.inference_method.
+
+
+        Parameters
+        ----------
+        x : tuple
+            Instance of a graph with unary evidence.
+            x=(unaries, edges)
+            unaries are an nd-array of shape (n_nodes, n_states),
+            edges are an nd-array of shape (n_edges, 2)
+
+        w : ndarray, shape=(size_psi,)
+            Parameters for the CRF energy function.
+
+        relaxed : bool, default=False
+            Whether relaxed inference should be performed.
+            Only meaningful if inference method is 'lp' or 'ad3'.
+            By default fractional solutions are rounded. If relaxed=True,
+            fractional solutions are returned directly.
+
+        return_energy : bool, default=False
+            Whether to return the energy of the solution (x, y) that was found.
+
+        Returns
+        -------
+        y_pred : ndarray or tuple
+            By default an inter ndarray of shape=(width, height)
+            of variable assignments for x is returned.
+            If ``relaxed=True`` and inference_method is ``lp`` or ``ad3``,
+            a tuple (unary_marginals, pairwise_marginals)
+            containing the relaxed inference result is returned.
+            unary marginals is an array of shape (width, height, n_states),
+            pairwise_marginals is an array of
+            shape (n_states, n_states) of accumulated pairwise marginals.
+
+        """
+        self._check_size_w(w)
+        self.inference_calls += 1
+        unary_potentials = self._get_unary_potentials(x, w)
+        pairwise_potentials = self._get_pairwise_potentials(x, w)
+        edges = self._get_edges(x)
+
+        return inference_dispatch(unary_potentials, pairwise_potentials, edges,
+                                  self.inference_method, relaxed=relaxed,
+                                  return_energy=return_energy)
