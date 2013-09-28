@@ -5,6 +5,8 @@ import os
 
 
 def plot_full_weak():
+    # full + weak plotter for syntetic data
+    # on different full-labeled training set sizes
     weak_results = np.genfromtxt('weak_labeled.csv', delimiter=',')
     full_results = np.genfromtxt('full_labeled.csv', delimiter=',')
 
@@ -34,7 +36,7 @@ def plot_full_weak():
 
 
 def plot_heterogenous_weak():
-    results = np.genfromtxt('heterogenous_plain')
+    results = np.genfromtxt('heterogenous')
     results = np.reshape(results, (-1, 6))
 
     y = np.mean(results, axis=0)

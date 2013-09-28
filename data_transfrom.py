@@ -4,6 +4,7 @@ import numpy as np
 
 base = '../data/'
 
+
 def load_syntetic_data(dataset):
     # load and transfrom from csv files
     unary_filename = base + 'syntetic/txt/unary10_e%d.txt' % dataset
