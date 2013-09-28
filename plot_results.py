@@ -51,10 +51,25 @@ def plot_heterogenous_weak():
     pl.ylim([0, 1])
     pl.xlim([-0.1, 5.1])
 
-if __name__ == '__main__':
-    os.chdir("results/syntetic")
 
-    plot_full_weak()
-    plot_heterogenous_weak()
+def plot_msrc_full():
+    y = np.genfromtxt('msrc_full.txt')
+    x = np.array([0, 20, 40, 80, 160, 276])
+
+    pl.plot([1, 2, 3, 4, 5], y)
+    pl.scatter([1, 2, 3, 4, 5], y, marker='o')
+    pl.xticks(np.arange(0, 6), x)
+    pl.title('C=0.01')
+    pl.xlabel('number of fully-labeled examples')
+    pl.ylabel('hamming loss')
+    pl.ylim([0, 1])
+    pl.xlim([-0.1, 5.1])
+
+if __name__ == '__main__':
+    os.chdir("results/msrc")
+
+    plot_msrc_full()
+#    plot_full_weak()
+#    plot_heterogenous_weak()
 
     pl.show()
