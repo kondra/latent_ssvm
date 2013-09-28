@@ -1,4 +1,5 @@
 import numpy as np
+import pylab as np
 import cPickle
 
 from pystruct.learners import OneSlackSSVM
@@ -77,12 +78,14 @@ def test_syntetic_weak(mode):
 
 
 def syntetic_weak():
+    #heterogenous model
     models_basedir = 'models/syntetic/'
+    results_basedir = 'results/syntetic/'
     crf = HCRF(n_states=10, n_features=10, n_edge_features=2,
                inference_method='gco')
-    base_clf = OneSlackSSVM(crf, max_iter=500, C=0.1, verbose=2,
-                            tol=0.001, n_jobs=4, inference_cache=100)
-    clf = LatentSSVM(base_clf, latent_iter=5, verbose=2)
+    base_clf = OneSlackSSVM(crf, max_iter=500, C=0.1, verbose=0,
+                            tol=0.001, n_jobs=1, inference_cache=100)
+    clf = LatentSSVM(base_clf, latent_iter=50, verbose=2, tol=0.01)
 
     X, H = load_syntetic(1)
     X = list(X)
@@ -103,8 +106,8 @@ def syntetic_weak():
     clf.fit(x_train, y_train, h_train, pass_labels=True, initialize=True)
     stop = time()
 
-    np.savetxt(models_basedir + 'syntetic_weak.csv', clf.w)
-    with open(models_basedir + 'syntetic_weak' + '.pickle', 'w') as f:
+    np.savetxt(models_basedir + 'high_c_on_first_syntetic_weak.csv', clf.w)
+    with open(models_basedir + 'high_c_on_first_syntetic_weak' + '.pickle', 'w') as f:
         cPickle.dump(clf, f)
 
     h_pred = clf.predict_latent(x_test)
@@ -112,6 +115,14 @@ def syntetic_weak():
     print 'Error on test set: %f' % compute_error(h_test, h_pred)
     print 'Norm of weight vector: |w|=%f' % np.linalg.norm(clf.w)
     print 'Elapsed time: %f s' % (stop - start)
+
+    test_error = []
+    for h_pred in clf.staged_predict_latent(x_test):
+        test_error.append(compute_error(h_test, h_pred))
+
+    np.savetxt(results_basedir + 'high_c_on_first_error_per_iter', np.array(test_error))
+    np.savetxt(results_basedir + 'high_c_on_first_deltas_per_iter', clf.w_deltas)
+    np.savetxt(results_basedir + 'high_c_on_first_changes_per_iter', clf.changes_count)
 
 
 if __name__ == '__main__':

@@ -57,6 +57,36 @@ def plot_syntetic_heterogenous():
     pl.xlim([-0.1, 5.1])
 
 
+def plot_syntetic_heterogenous_per_iter():
+    os.chdir("results/syntetic")
+
+    errors = np.genfromtxt('error_per_iter')
+    deltas = np.genfromtxt('deltas_per_iter')
+    changes = np.genfromtxt('changes_per_iter')
+    x = np.arange(0, errors.size)
+
+    pl.figure()
+    pl.plot(x, errors)
+    pl.scatter(x, errors)
+    pl.title('Syntetic, C=0.1, full=10')
+    pl.xlabel('latent SSVM iteration')
+    pl.ylabel('error on test set')
+
+    pl.figure()
+    pl.plot(x, deltas)
+    pl.scatter(x, deltas)
+    pl.title('Syntetic, C=0.1')
+    pl.xlabel('latent SSVM iteration')
+    pl.ylabel('difference of ssvm weight vectors')
+
+    pl.figure()
+    pl.plot(x, changes)
+    pl.scatter(x, changes)
+    pl.title('Syntetic, C=0.1')
+    pl.xlabel('latent SSVM iteration')
+    pl.ylabel('changes in inferred latent labelling')
+
+
 def plot_msrc_full():
     # plot results of ssvm trained on full labeled msrc data
     os.chdir("results/msrc")
@@ -73,6 +103,6 @@ def plot_msrc_full():
     pl.xlim([-0.1, 5.1])
 
 if __name__ == '__main__':
-    plot_msrc_full()
+    plot_syntetic_heterogenous_per_iter()
 
     pl.show()
