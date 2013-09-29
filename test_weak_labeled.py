@@ -1,5 +1,5 @@
 import numpy as np
-import pylab as np
+import pylab as pl
 import cPickle
 
 from pystruct.learners import OneSlackSSVM
@@ -10,6 +10,7 @@ from latent_structured_svm import LatentSSVM
 from heterogenous_crf import HCRF
 
 from data_loader import load_syntetic
+from data_loader import load_msrc
 from common import compute_error
 from common import weak_from_hidden
 
@@ -81,11 +82,12 @@ def syntetic_weak():
     #heterogenous model
     models_basedir = 'models/syntetic/'
     results_basedir = 'results/syntetic/'
+    prefix = 'areas_v3_'
     crf = HCRF(n_states=10, n_features=10, n_edge_features=2,
                inference_method='gco')
     base_clf = OneSlackSSVM(crf, max_iter=500, C=0.1, verbose=0,
                             tol=0.001, n_jobs=4, inference_cache=100)
-    clf = LatentSSVM(base_clf, latent_iter=15, verbose=2, tol=0.1)
+    clf = LatentSSVM(base_clf, latent_iter=25, verbose=2, tol=0.001)
 
     X, H = load_syntetic(1)
     X = list(X)
@@ -108,8 +110,8 @@ def syntetic_weak():
     clf.fit(x_train, y_train, h_train, is_full, pass_labels=True, initialize=True)
     stop = time()
 
-    np.savetxt(models_basedir + 'area_syntetic_weak.csv', clf.w)
-    with open(models_basedir +  'area_syntetic_weak' + '.pickle', 'w') as f:
+    np.savetxt(models_basedir + prefix + 'syntetic_weak.csv', clf.w)
+    with open(models_basedir + prefix + 'syntetic_weak' + '.pickle', 'w') as f:
         cPickle.dump(clf, f)
 
     print 'Score on test set: %f' % clf.score(x_test, h_test)
@@ -120,11 +122,60 @@ def syntetic_weak():
     for score in clf.staged_score(x_test, h_test):
         test_error.append(score)
 
-    np.savetxt(results_basedir + 'area_error_per_iter', np.array(test_error))
-    np.savetxt(results_basedir + 'area_deltas_per_iter', clf.w_deltas)
-    np.savetxt(results_basedir + 'area_changes_per_iter', clf.changes_count)
+    np.savetxt(results_basedir + prefix + 'error_per_iter', np.array(test_error))
+    np.savetxt(results_basedir + prefix + 'deltas_per_iter', clf.w_deltas)
+    np.savetxt(results_basedir + prefix + 'changes_per_iter', clf.changes_count)
+
+
+def msrc_weak():
+    #heterogenous model
+    basedir = '../data/msrc/trainmasks/'
+    models_basedir = 'models/msrc/'
+    results_basedir = 'results/msrc/'
+    prefix = ''
+
+    n_train = 20
+    train_mask = np.genfromtxt(basedir + 'trainMaskX%d.txt' % n_train)
+    train_mask = train_mask[0:276].astype(np.bool)
+
+    crf = HCRF(n_states=24, n_features=2028, n_edge_features=4,
+               inference_method='gco')
+    base_clf = OneSlackSSVM(crf, max_iter=500, C=0.1, verbose=0,
+                            tol=0.1, n_jobs=4, inference_cache=100)
+    clf = LatentSSVM(base_clf, latent_iter=25, verbose=2, tol=0.001)
+
+    Xtest, Htest = load_msrc('test')
+    Xtrain, Htrain = load_msrc('train')
+
+    Ytrain = weak_from_hidden(Htrain)
+    Ytest = weak_from_hidden(Htest)
+
+    is_full = train_mask
+    for i in xrange(len(is_full)):
+        # remove full-labels
+        Htrain[i][:, 0] = 0
+
+    start = time()
+    clf.fit(Xtrain, Ytrain, Htrain, is_full, pass_labels=True, initialize=True)
+    stop = time()
+
+    np.savetxt(models_basedir + prefix + 'msrc_weak.csv', clf.w)
+    with open(models_basedir + prefix + 'msrc_weak' + '.pickle', 'w') as f:
+        cPickle.dump(clf, f)
+
+    print 'Score on test set: %f' % clf.score(Xtest, Htest)
+    print 'Norm of weight vector: |w|=%f' % np.linalg.norm(clf.w)
+    print 'Elapsed time: %f s' % (stop - start)
+
+    test_error = []
+    for score in clf.staged_score(Xtest, Htest):
+        test_error.append(score)
+
+    np.savetxt(results_basedir + prefix + 'error_per_iter', np.array(test_error))
+    np.savetxt(results_basedir + prefix + 'deltas_per_iter', clf.w_deltas)
+    np.savetxt(results_basedir + prefix + 'changes_per_iter', clf.changes_count)
 
 
 if __name__ == '__main__':
-    syntetic_weak()
+    msrc_weak()
 #    test_syntetic_weak('heterogenous')

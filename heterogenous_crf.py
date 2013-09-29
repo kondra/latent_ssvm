@@ -194,7 +194,7 @@ class HCRF(StructuredModel):
             # y[:, 0] - labels
             # y[:, 1] - areas
             loss_augment_weighted_unaries(unary_potentials, np.asarray(y[:, 0].astype(np.int32)),
-                                          y[:, 1])
+                                          y[:, 1].astype(np.float))
 
             return inference_dispatch(unary_potentials, pairwise_potentials,
                                       edges, self.inference_method,

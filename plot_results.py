@@ -59,31 +59,31 @@ def plot_syntetic_heterogenous():
 
 def plot_syntetic_heterogenous_per_iter():
     os.chdir("results/syntetic")
+    prefix = 'areas_v3_'
 
-    errors = np.genfromtxt('high_c_on_first_error_per_iter')
-    deltas = np.genfromtxt('high_c_on_first_deltas_per_iter')
-    changes= np.genfromtxt('high_c_on_first_changes_per_iter')
+    errors = np.genfromtxt(prefix + 'error_per_iter')
+    deltas = np.genfromtxt(prefix + 'deltas_per_iter')
+    changes = np.genfromtxt(prefix + 'changes_per_iter')
+
     x = np.arange(0, errors.size)
 
     pl.figure()
+    pl.subplot(1, 3, 1)
     pl.plot(x, errors)
     pl.scatter(x, errors)
-    pl.title('Syntetic, C=0.1, full=10')
-    pl.xlabel('latent SSVM iteration')
-    pl.ylabel('error on test set')
+    pl.xlabel('iter')
+    pl.ylabel('score on test set')
 
-    pl.figure()
+    pl.subplot(1, 3, 2)
     pl.plot(x, deltas)
     pl.scatter(x, deltas)
-    pl.title('Syntetic, C=0.1')
-    pl.xlabel('latent SSVM iteration')
+    pl.xlabel('iter')
     pl.ylabel('difference of ssvm weight vectors')
 
-    pl.figure()
+    pl.subplot(1, 3, 3)
     pl.plot(x, changes)
     pl.scatter(x, changes)
-    pl.title('Syntetic, C=0.1')
-    pl.xlabel('latent SSVM iteration')
+    pl.xlabel('iter')
     pl.ylabel('changes in inferred latent labelling')
 
 
