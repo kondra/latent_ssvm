@@ -44,7 +44,7 @@ class LatentSSVM(BaseSSVM):
         self.verbose = verbose
         self.tol = tol
 
-    def fit(self, X, Y, H_def, initialize=True, pass_labels=False):
+    def fit(self, X, Y, H_def, is_full, initialize=True, pass_labels=False):
         """Learn parameters using the concave-convex procedure.
 
         Parameters
@@ -57,19 +57,22 @@ class LatentSSVM(BaseSSVM):
             Training labels. Contains the strctured labels for inputs in X.
             Needs to have the same length as X.
 
-        H_def: iterable
+        H_def : iterable
             Labels for full-labeles samples. (known hidden variables)
             Used for heterogenous training.
 
-        initialize: boolean
+        is_full: iterable
+            Indicator of full-labeled example.
+
+        initialize : boolean
             Initialize w by running SSVM on full-labeled examples.
 
-        pass_labels: boolean
+        pass_labels : boolean
             Pass hidden and original labels to SSVM solver as a tuple.
             Only use this if you know what you are doing!
         """
 
-        self.model.initialize(X, Y)
+#        self.model.initialize(X, Y)
         w = np.zeros(self.model.size_psi)
         constraints = None
         ws = []
@@ -80,25 +83,23 @@ class LatentSSVM(BaseSSVM):
         H1 = []
         H = H_def
 
-        for i, h in enumerate(H_def):
-            if h is not None:
+        for i in xrange(len(X)):
+            if is_full[i]:
                 X1.append(X[i])
-                H1.append(h)
-                Y[i] = None
+                H1.append(H_def[i])
 
         # all data is fully labeled, quit
         if len(X1) == len(X):
             self.base_ssvm.fit(X1, H1)
-            w = self.base_ssvm.w
             return
 
         # we have some fully labeled examples
         if initialize and len(X1) > 0:
-            saved_C = self.base_ssvm.C
-            self.base_ssvm.C = 10
+#            saved_C = self.base_ssvm.C
+#            self.base_ssvm.C = 10
             self.base_ssvm.fit(X1, H1)
             w = self.base_ssvm.w
-            self.base_ssvm.C = saved_C
+#            self.base_ssvm.C = saved_C
 
         ws.append(w)
 
@@ -107,13 +108,15 @@ class LatentSSVM(BaseSSVM):
                 print("LATENT SVM ITERATION %d" % iteration)
             # find latent variables for ground truth:
             H_new = []
-            for x, y, h in zip(X, Y, H_def):
-                if h is None:
-                    H_new.append(self.model.latent(x, y, w))
+            for x, y, h, ind in zip(X, Y, H_def, is_full):
+                if not ind:
+                    H_new.append(np.vstack([self.model.latent(x, y, w),
+                                           h[:, 1]]).T)
                 else:
                     H_new.append(h)
 
-            changes = [np.any(h_new != h) for h_new, h in zip(H_new, H)]
+            changes = [np.any(h_new[:, 0].astype(np.int32) != h[:, 0].astype(np.int32))
+                       for h_new, h in zip(H_new, H)]
             if not np.any(changes):
                 if self.verbose:
                     print("no changes in latent variables of ground truth."
@@ -175,6 +178,18 @@ class LatentSSVM(BaseSSVM):
             self.base_ssvm.w = saved_w
             yield H
 
+    def staged_score(self, X, Y):
+        # is this ok?
+        for i in xrange(self.iter_done):
+            saved_w = self.base_ssvm.w
+            self.base_ssvm.w = self.ws[i]
+            H = self.base_ssvm.predict(X)
+            losses = [self.model.loss(y, y_pred) / np.sum(y[:, 1])
+                      for y, y_pred in zip(Y, H)]
+            score = 1. - np.sum(losses) / float(len(X))
+            self.base_ssvm.w = saved_w
+            yield score
+
     def predict(self, X):
         prediction = self.base_ssvm.predict(X)
         return [self.model.label_from_latent(h) for h in prediction]
@@ -202,10 +217,14 @@ class LatentSSVM(BaseSSVM):
             Average of 1 - loss over training examples.
         """
         # TODO: rewrite this
-        losses = [self.model.base_loss(y, y_pred)
-                  for y, y_pred in zip(Y, self.predict(X))]
-        max_losses = [self.model.max_loss(y) for y in Y]
-        return 1. - np.sum(losses) / float(np.sum(max_losses))
+        #losses = [self.model.base_loss(y, y_pred)
+        #          for y, y_pred in zip(Y, self.predict(X))]
+        #max_losses = [self.model.max_loss(y) for y in Y]
+        #return 1. - np.sum(losses) / float(np.sum(max_losses))
+
+        losses = [self.model.loss(y, y_pred) / np.sum(y[:, 1])
+                  for y, y_pred in zip(Y, self.predict_latent(X))]
+        return 1. - np.sum(losses) / float(len(X))
 
     @property
     def model(self):

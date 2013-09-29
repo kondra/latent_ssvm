@@ -60,9 +60,9 @@ def plot_syntetic_heterogenous():
 def plot_syntetic_heterogenous_per_iter():
     os.chdir("results/syntetic")
 
-    errors = np.genfromtxt('error_per_iter')
-    deltas = np.genfromtxt('deltas_per_iter')
-    changes = np.genfromtxt('changes_per_iter')
+    errors = np.genfromtxt('high_c_on_first_error_per_iter')
+    deltas = np.genfromtxt('high_c_on_first_deltas_per_iter')
+    changes= np.genfromtxt('high_c_on_first_changes_per_iter')
     x = np.arange(0, errors.size)
 
     pl.figure()

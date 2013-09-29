@@ -84,8 +84,8 @@ def syntetic_weak():
     crf = HCRF(n_states=10, n_features=10, n_edge_features=2,
                inference_method='gco')
     base_clf = OneSlackSSVM(crf, max_iter=500, C=0.1, verbose=0,
-                            tol=0.001, n_jobs=1, inference_cache=100)
-    clf = LatentSSVM(base_clf, latent_iter=50, verbose=2, tol=0.01)
+                            tol=0.001, n_jobs=4, inference_cache=100)
+    clf = LatentSSVM(base_clf, latent_iter=15, verbose=2, tol=0.1)
 
     X, H = load_syntetic(1)
     X = list(X)
@@ -99,30 +99,30 @@ def syntetic_weak():
     y_test = Y[401:]
     h_test = H[401:]
 
+    is_full = [True for i in xrange(10)]
     for i in xrange(10, len(h_train)):
-        h_train[i] = None
+        is_full.append(False)
+        h_train[i][:, 0] = 0
 
     start = time()
-    clf.fit(x_train, y_train, h_train, pass_labels=True, initialize=True)
+    clf.fit(x_train, y_train, h_train, is_full, pass_labels=True, initialize=True)
     stop = time()
 
-    np.savetxt(models_basedir + 'high_c_on_first_syntetic_weak.csv', clf.w)
-    with open(models_basedir + 'high_c_on_first_syntetic_weak' + '.pickle', 'w') as f:
+    np.savetxt(models_basedir + 'area_syntetic_weak.csv', clf.w)
+    with open(models_basedir +  'area_syntetic_weak' + '.pickle', 'w') as f:
         cPickle.dump(clf, f)
 
-    h_pred = clf.predict_latent(x_test)
-
-    print 'Error on test set: %f' % compute_error(h_test, h_pred)
+    print 'Score on test set: %f' % clf.score(x_test, h_test)
     print 'Norm of weight vector: |w|=%f' % np.linalg.norm(clf.w)
     print 'Elapsed time: %f s' % (stop - start)
 
     test_error = []
-    for h_pred in clf.staged_predict_latent(x_test):
-        test_error.append(compute_error(h_test, h_pred))
+    for score in clf.staged_score(x_test, h_test):
+        test_error.append(score)
 
-    np.savetxt(results_basedir + 'high_c_on_first_error_per_iter', np.array(test_error))
-    np.savetxt(results_basedir + 'high_c_on_first_deltas_per_iter', clf.w_deltas)
-    np.savetxt(results_basedir + 'high_c_on_first_changes_per_iter', clf.changes_count)
+    np.savetxt(results_basedir + 'area_error_per_iter', np.array(test_error))
+    np.savetxt(results_basedir + 'area_deltas_per_iter', clf.w_deltas)
+    np.savetxt(results_basedir + 'area_changes_per_iter', clf.changes_count)
 
 
 if __name__ == '__main__':

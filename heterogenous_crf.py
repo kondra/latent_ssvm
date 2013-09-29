@@ -6,7 +6,7 @@ import numpy as np
 
 from pystruct.models.base import StructuredModel
 from pystruct.inference.inference_methods import inference_dispatch
-from pystruct.models.utils import loss_augment_unaries
+from pystruct.models.utils import loss_augment_weighted_unaries
 
 
 class HCRF(StructuredModel):
@@ -24,8 +24,9 @@ class HCRF(StructuredModel):
         self.size_psi = (self.n_states * self.n_features +
                          self.n_edge_features)
         # we do not use class weights now
-        self.class_weight = None
-        self._set_class_weight()
+        # so all classes are weighted by one
+#        self.class_weight = None
+#        self._set_class_weight()
 
     def _check_size_x(self, x):
         features = self._get_features(x)
@@ -49,11 +50,12 @@ class HCRF(StructuredModel):
     def label_from_latent(self, h):
         return np.unique(h)
 
-    def init_latent(self, X, Y):
-        return [self.latent(x, y, np.zeros(self.size_psi))
-                for x, y in zip(X, Y)]
+#    def init_latent(self, X, Y):
+#        return [self.latent(x, y, np.zeros(self.size_psi))
+#                for x, y in zip(X, Y)]
 
     def latent(self, x, y, w):
+        # here y is weak labels
         unary_potentials = self._get_unary_potentials(x, w)
         # forbid h that is incompoatible with y
         # by modifying unary params
@@ -126,6 +128,10 @@ class HCRF(StructuredModel):
             # take full labels
             y = y[0]
 
+        if len(y.shape) > 1:
+            # drop areas
+            y = y[:, 0].astype(np.int32)
+
         y = y.reshape(n_nodes)
         gx = np.ogrid[:n_nodes]
 
@@ -142,27 +148,37 @@ class HCRF(StructuredModel):
         return psi_vector
 
     def loss(self, y, y_hat):
+        # we use (y_full, y_hidden) in heterogenous latent ssvm
+        # we also store superpixel area in y_full (as second column?)
         if not isinstance(y, tuple):
-            if hasattr(self, 'class_weight'):
-                return np.sum(self.class_weight[y] * (y != y_hat))
-            return np.sum(y != y_hat)
+#            if hasattr(self, 'class_weight'):
+#                return np.sum(self.class_weight[y] * (y != y_hat))
+
+            # drop areas
+            area = y[:, 1]
+            y = y[:, 0].astype(np.int32)
+            return np.sum(area * (y != y_hat))
         elif y[1] is None:
             # fully labeled example
-            return np.sum(y[0] != y_hat)
+            return np.sum(y[0][:, 1] * (y[0][:, 0].astype(np.int32) != y_hat))
         else:
             # should use Kappa here
             loss = 0
-            n_nodes = y[0].ravel().shape[0]
-            c = n_nodes / float(self.n_states)
+            c = np.sum(y[0][:, 1]) / float(self.n_states)
             for label in xrange(0, self.n_states):
-                if label in y[1] and not np.any(y[0].ravel() == label):
+                if label in y[1] and not np.any(y[0][:, 0].astype(np.int32) == label):
                     loss += c
                 elif label not in y[1]:
-                    loss += np.sum(y[0] == label)
+                    loss += np.sum(y[0][:, 0].astype(np.int32) == label)
             return loss
 
     def loss_augmented_inference(self, x, y, w, relaxed=False,
                                  return_energy=False):
+        if relaxed == True:
+            relaxed = False
+            # we do not support relaxed inference yet
+            #raise NotImplementedError
+
         self.inference_calls += 1
         self._check_size_w(w)
         unary_potentials = self._get_unary_potentials(x, w)
@@ -171,25 +187,29 @@ class HCRF(StructuredModel):
 
         if not isinstance(y, tuple) or y[1] is None:
             if isinstance(y, tuple) and y[1] is None:
+                # use full labeling
                 y = y[0]
+            # this is full labeled example
 
-            loss_augment_unaries(unary_potentials, np.asarray(y),
-                                 self.class_weight)
+            # y[:, 0] - labels
+            # y[:, 1] - areas
+            loss_augment_weighted_unaries(unary_potentials, np.asarray(y[:, 0].astype(np.int32)),
+                                          y[:, 1])
 
             return inference_dispatch(unary_potentials, pairwise_potentials,
                                       edges, self.inference_method,
                                       relaxed=relaxed,
                                       return_energy=return_energy)
         else:
-            #use pygco with label costs
+            # this is weak labeled example
+            # use pygco with label costs
             label_cost = np.zeros(self.n_states)
-            n_nodes = unary_potentials.shape[0]
-            c = n_nodes / float(self.n_states)
+            c = np.sum(y[0][:, 1]) / float(self.n_states)
             for label in y[1]:
                 label_cost[label] = c
             for label in xrange(0, self.n_states):
                 if label not in y[1]:
-                    unary_potentials[:, label] += 1
+                    unary_potentials[:, label] += y[0][:, 1]
 
             edges = edges.copy().astype(np.int32)
             pairwise_potentials = (1000 * pairwise_potentials).copy().astype(
@@ -248,7 +268,8 @@ class HCRF(StructuredModel):
         """
         if relaxed == True:
             # we do not support relaxed inference yet
-            raise NotImplementedError
+            relaxed = False
+            #raise NotImplementedError
 
         self._check_size_w(w)
         self.inference_calls += 1

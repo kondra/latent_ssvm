@@ -14,6 +14,6 @@ def compute_error(Y, Y_pred):
 def weak_from_hidden(H):
     Y = []
     for h in H:
-        Y.append(np.unique(h))
+        Y.append(np.unique(h[:, 0].astype(np.int32)))
     return Y
 
