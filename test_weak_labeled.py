@@ -142,7 +142,7 @@ def msrc_weak():
                inference_method='gco')
     base_clf = OneSlackSSVM(crf, max_iter=500, C=0.1, verbose=0,
                             tol=0.1, n_jobs=1, inference_cache=100)
-    clf = LatentSSVM(base_clf, latent_iter=2, verbose=2, tol=0.001)
+    clf = LatentSSVM(base_clf, latent_iter=20, verbose=2, tol=0.1)
 
     Xtest, Htest = load_msrc('test')
     Xtrain, Htrain = load_msrc('train')
@@ -160,9 +160,9 @@ def msrc_weak():
     clf.fit(Xtrain, Ytrain, Htrain, is_full, pass_labels=True, initialize=True)
     stop = time()
 
-    np.savetxt(models_basedir + prefix + 'msrc_weak.csv', clf.w)
-    with open(models_basedir + prefix + 'msrc_weak' + '.pickle', 'w') as f:
-        cPickle.dump(clf, f)
+#    np.savetxt(models_basedir + prefix + 'msrc_weak.csv', clf.w)
+#    with open(models_basedir + prefix + 'msrc_weak' + '.pickle', 'w') as f:
+#        cPickle.dump(clf, f)
 
     print 'Score on test set: %f' % clf.score(Xtest, Htest)
     print 'Norm of weight vector: |w|=%f' % np.linalg.norm(clf.w)
