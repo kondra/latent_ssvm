@@ -141,8 +141,8 @@ def msrc_weak():
     crf = HCRF(n_states=24, n_features=2028, n_edge_features=4,
                inference_method='gco')
     base_clf = OneSlackSSVM(crf, max_iter=500, C=0.1, verbose=0,
-                            tol=0.1, n_jobs=4, inference_cache=100)
-    clf = LatentSSVM(base_clf, latent_iter=25, verbose=2, tol=0.001)
+                            tol=0.1, n_jobs=1, inference_cache=100)
+    clf = LatentSSVM(base_clf, latent_iter=2, verbose=2, tol=0.001)
 
     Xtest, Htest = load_msrc('test')
     Xtrain, Htrain = load_msrc('train')
@@ -152,8 +152,9 @@ def msrc_weak():
 
     is_full = train_mask
     for i in xrange(len(is_full)):
-        # remove full-labels
-        Htrain[i][:, 0] = 0
+        if is_full[i] == False:
+            # remove full-labels
+            Htrain[i][:, 0] = 0
 
     start = time()
     clf.fit(Xtrain, Ytrain, Htrain, is_full, pass_labels=True, initialize=True)
