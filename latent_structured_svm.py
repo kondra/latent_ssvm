@@ -5,6 +5,7 @@
 
 
 import numpy as np
+from time import time
 
 from pystruct.learners.ssvm import BaseSSVM
 from pystruct.learners.n_slack_ssvm import NSlackSSVM
@@ -78,6 +79,8 @@ class LatentSSVM(BaseSSVM):
         ws = []
         w_deltas = []
         changes_count = []
+        start_time = time()
+        timestamps = [0.0]
 
         X1 = []
         H1 = []
@@ -163,6 +166,9 @@ class LatentSSVM(BaseSSVM):
                 break
             if self.logger is not None:
                 self.logger(self, iteration)
+            timestamps.append(time() - start_time)
+            if self.verbose:
+                print("time elapsed: %f s" % timestamps[-1])
 
         self.ws = ws
         self.w_deltas = w_deltas
