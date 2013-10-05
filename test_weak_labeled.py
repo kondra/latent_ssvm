@@ -83,12 +83,12 @@ def split_test_train(X, Y, n_full, n_train):
     x_train = X[:n_train]
     y_train = [Label(y[:, 0].astype(np.int32), None, y[:, 1], True)
                for y in Y[:n_full]]
+    y_train += [Label(None, np.unique(y[:, 0].astype(np.int32)),
+                      y[:, 1], False) for y in Y[(n_full + 1):(n_train + 1)]]
+
     x_test = X[(n_train + 1):]
     y_test = [Label(y[:, 0].astype(np.int32), None, y[:, 1], True)
               for y in Y[(n_train + 1):]]
-
-    y_train += [Label(None, np.unique(y[:, 0].astype(np.int32)),
-                      y[:, 1], False) for y in Y[:(n_train + 1)]]
 
     return x_train, y_train, x_test, y_test
 
