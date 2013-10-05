@@ -8,9 +8,9 @@ import numpy as np
 from time import time
 
 from pystruct.learners.ssvm import BaseSSVM
-from pystruct.learners.n_slack_ssvm import NSlackSSVM
-from pystruct.utils import find_constraint
+from sklearn.externals.joblib import Parallel, delayed
 
+from common import latent
 
 class LatentSSVM(BaseSSVM):
     """
@@ -38,14 +38,16 @@ class LatentSSVM(BaseSSVM):
         The learned weights of the SVM.
     """
 
-    def __init__(self, base_ssvm, latent_iter=5, verbose=0, tol=0.01, logger=None):
+    def __init__(self, base_ssvm, latent_iter=5, verbose=0, tol=0.1,
+                 n_jobs=1, logger=None):
         self.base_ssvm = base_ssvm
         self.latent_iter = latent_iter
         self.logger = logger
         self.verbose = verbose
         self.tol = tol
+        self.n_jobs = n_jobs
 
-    def fit(self, X, Y, H_def, is_full, initialize=True, pass_labels=False):
+    def fit(self, X, Y, initialize=True):
         """Learn parameters using the concave-convex procedure.
 
         Parameters
@@ -55,25 +57,13 @@ class LatentSSVM(BaseSSVM):
             No requirement on the particular form of entries of X is made.
 
         Y : iterable
-            Training labels. Contains the strctured labels for inputs in X.
-            Needs to have the same length as X.
-
-        H_def : iterable
-            Labels for full-labeles samples. (known hidden variables)
-            Used for heterogenous training.
-
-        is_full: iterable
-            Indicator of full-labeled example.
+            Training labels. Contains the strctured labels (full and weak)
+            for inputs in X. Needs to have the same length as X.
 
         initialize : boolean
             Initialize w by running SSVM on full-labeled examples.
-
-        pass_labels : boolean
-            Pass hidden and original labels to SSVM solver as a tuple.
-            Only use this if you know what you are doing!
         """
 
-#        self.model.initialize(X, Y)
         w = np.zeros(self.model.size_psi)
         constraints = None
         ws = []
@@ -82,27 +72,22 @@ class LatentSSVM(BaseSSVM):
         start_time = time()
         timestamps = [0.0]
 
-        X1 = []
-        H1 = []
-        H = H_def
-
-        for i in xrange(len(X)):
-            if is_full[i]:
-                X1.append(X[i])
-                H1.append(H_def[i])
-
         # all data is fully labeled, quit
-        if len(X1) == len(X):
-            self.base_ssvm.fit(X1, H1)
+        if np.all([y.full_labeled for y in Y]):
+            self.base_ssvm.fit(X, Y)
             return
 
-        # we have some fully labeled examples
-        if initialize and len(X1) > 0:
-#            saved_C = self.base_ssvm.C
-#            self.base_ssvm.C = 10
-            self.base_ssvm.fit(X1, H1)
+        # we have some fully labeled examples, others are somehow initialized
+        if initialize:
+            X1 = []
+            Y1 = []
+            for x, y in zip(X, Y):
+                if y.full_labeled:
+                    X1.append(x)
+                    Y1.append(y)
+
+            self.base_ssvm.fit(X1, Y1)
             w = self.base_ssvm.w
-#            self.base_ssvm.C = saved_C
 
         ws.append(w)
 
@@ -110,26 +95,30 @@ class LatentSSVM(BaseSSVM):
             if self.verbose:
                 print("LATENT SVM ITERATION %d" % iteration)
             # find latent variables for ground truth:
-            H_new = []
-            for x, y, h, ind in zip(X, Y, H_def, is_full):
-                if not ind:
-                    H_new.append(np.vstack([self.model.latent(x, y, w),
-                                           h[:, 1]]).T)
-                else:
-                    H_new.append(h)
+            Y_new = []
 
-            changes = [np.any(h_new[:, 0].astype(np.int32) != h[:, 0].astype(np.int32))
-                       for h_new, h in zip(H_new, H)]
+
+            Y_new = Parallel(n_jobs=self.n_jobs, verbose=0)(
+                delayed(latent)(self.model, x, y, w) for x, y in zip(X, Y))
+
+#            for x, y in zip(X, Y):
+#                if not y.full_labeled:
+#                    Y_new.append(self.model.latent(x, y, w))
+#                else:
+#                    Y_new.append(y)
+
+            changes = [np.any(y_new.full != y.full) for y_new, y in zip(Y_new, Y)]
             if not np.any(changes):
                 if self.verbose:
                     print("no changes in latent variables of ground truth."
                           " stopping.")
+                iteration -= 1
                 break
             if self.verbose:
                 print("changes in H: %d" % np.sum(changes))
             changes_count.append(np.sum(changes))
 
-            # update constraints:
+# update constraints:
 # seems that this code should not work
 #            if isinstance(self.base_ssvm, NSlackSSVM):
 #                constraints = [[] for i in xrange(len(X))]
@@ -140,18 +129,13 @@ class LatentSSVM(BaseSSVM):
 #                                                constraint[0])
 #                        y_hat, dpsi, _, loss = const
 #                        constraints[i].append([y_hat, dpsi, loss])
-            H = H_new
-
-            if pass_labels:
-                T = zip(H, Y)
-            else:
-                T = H
+            Y = Y_new
 
             if iteration > 0:
-                self.base_ssvm.fit(X, T, constraints=constraints,
+                self.base_ssvm.fit(X, Y, constraints=constraints,
                                    warm_start="soft", initialize=False)
             else:
-                self.base_ssvm.fit(X, T, constraints=constraints,
+                self.base_ssvm.fit(X, Y, constraints=constraints,
                                    initialize=False)
             w = self.base_ssvm.w
             ws.append(w)
@@ -159,6 +143,9 @@ class LatentSSVM(BaseSSVM):
             w_deltas.append(delta)
             if self.verbose:
                 print("|w-w_prev|: %f" % delta)
+            timestamps.append(time() - start_time)
+            if self.verbose:
+                print("time elapsed: %f s" % timestamps[-1])
             if delta < self.tol:
                 if self.verbose:
                     print("weight vector did not change a lot, break")
@@ -166,39 +153,36 @@ class LatentSSVM(BaseSSVM):
                 break
             if self.logger is not None:
                 self.logger(self, iteration)
-            timestamps.append(time() - start_time)
-            if self.verbose:
-                print("time elapsed: %f s" % timestamps[-1])
 
         self.ws = ws
         self.w_deltas = w_deltas
         self.changes_count = changes_count
         self.iter_done = iteration
 
+    def _predict_from_iter(self, X, i):
+        saved_w = self.base_ssvm.w
+        self.base_ssvm.w = self.ws[i]
+        Y_pred = self.base_ssvm.predict(X)
+        self.base_ssvm.w = saved_w
+        return Y_pred
+
     def staged_predict_latent(self, X):
         # is this ok?
         for i in xrange(self.iter_done):
-            saved_w = self.base_ssvm.w
-            self.base_ssvm.w = self.ws[i]
-            H = self.base_ssvm.predict(X)
-            self.base_ssvm.w = saved_w
-            yield H
+            yield self._predict_from_iter(X, i)
 
     def staged_score(self, X, Y):
         # is this ok?
         for i in xrange(self.iter_done):
-            saved_w = self.base_ssvm.w
-            self.base_ssvm.w = self.ws[i]
-            H = self.base_ssvm.predict(X)
-            losses = [self.model.loss(y, y_pred) / np.sum(y[:, 1])
-                      for y, y_pred in zip(Y, H)]
-            score = 1. - np.sum(losses) / float(len(X))
-            self.base_ssvm.w = saved_w
+            Y_pred = self._predict_from_iter(X, i)
+            losses = [self.model.loss(y, y_pred) / np.sum(y.weights)
+                      for y, y_pred in zip(Y, Y_pred)]
+            score = 1. - np.sum(losses) / len(X)
             yield score
 
-    def predict(self, X):
-        prediction = self.base_ssvm.predict(X)
-        return [self.model.label_from_latent(h) for h in prediction]
+#    def predict(self, X):
+#        prediction = self.base_ssvm.predict(X)
+#        return [self.model.label_from_latent(h) for h in prediction]
 
     def predict_latent(self, X):
         return self.base_ssvm.predict(X)
@@ -228,9 +212,9 @@ class LatentSSVM(BaseSSVM):
         #max_losses = [self.model.max_loss(y) for y in Y]
         #return 1. - np.sum(losses) / float(np.sum(max_losses))
 
-        losses = [self.model.loss(y, y_pred) / np.sum(y[:, 1])
+        losses = [self.model.loss(y, y_pred) / np.sum(y.weights)
                   for y, y_pred in zip(Y, self.predict_latent(X))]
-        return 1. - np.sum(losses) / float(len(X))
+        return 1. - np.sum(losses) / len(X)
 
     @property
     def model(self):

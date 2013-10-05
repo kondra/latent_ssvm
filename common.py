@@ -12,8 +12,8 @@ def compute_error(Y, Y_pred):
 
 
 def weak_from_hidden(H):
-    Y = []
-    for h in H:
-        Y.append(np.unique(h[:, 0].astype(np.int32)))
-    return Y
+    return [np.unique(h[:, 0].astype(np.int32)) for h in H]
 
+
+def latent(model, x, y, w):
+    return model.latent(x, y, w)

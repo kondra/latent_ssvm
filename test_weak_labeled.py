@@ -13,6 +13,7 @@ from data_loader import load_syntetic
 from data_loader import load_msrc
 from common import compute_error
 from common import weak_from_hidden
+from label import Label
 
 # testing with weakly labeled train set
 
@@ -78,48 +79,52 @@ def test_syntetic_weak(mode):
     return results
 
 
+def split_test_train(X, Y, n_full, n_train):
+    x_train = X[:n_train]
+    y_train = [Label(y[:, 0].astype(np.int32), None, y[:, 1], True)
+               for y in Y[:n_full]]
+    x_test = X[(n_train + 1):]
+    y_test = [Label(y[:, 0].astype(np.int32), None, y[:, 1], True)
+              for y in Y[(n_train + 1):]]
+
+    y_train += [Label(None, np.unique(y[:, 0].astype(np.int32)),
+                      y[:, 1], False) for y in Y[:(n_train + 1)]]
+
+    return x_train, y_train, x_test, y_test
+
+
 def syntetic_weak():
     #heterogenous model
     models_basedir = 'models/syntetic/'
     results_basedir = 'results/syntetic/'
-    prefix = 'areas_v3_'
+    prefix = 'NEWareas_v3_'
+    n_full = 10
+    n_train = 400
+
     crf = HCRF(n_states=10, n_features=10, n_edge_features=2,
                inference_method='gco')
-    base_clf = OneSlackSSVM(crf, max_iter=500, C=0.1, verbose=0,
-                            tol=0.001, n_jobs=4, inference_cache=100)
-    clf = LatentSSVM(base_clf, latent_iter=25, verbose=2, tol=0.001)
+    base_clf = OneSlackSSVM(crf, max_iter=100, C=0.1, verbose=2,
+                            tol=0.1, n_jobs=4, inference_cache=100)
+    clf = LatentSSVM(base_clf, latent_iter=5, verbose=2, tol=0.1, n_jobs=4)
 
-    X, H = load_syntetic(1)
-    X = list(X)
-    H = list(H)
-    Y = weak_from_hidden(H)
+    X, Y = load_syntetic(1)
 
-    x_train = X[:400]
-    y_train = Y[:400]
-    h_train = H[:400]
-    x_test = X[401:]
-    y_test = Y[401:]
-    h_test = H[401:]
-
-    is_full = [True for i in xrange(10)]
-    for i in xrange(10, len(h_train)):
-        is_full.append(False)
-        h_train[i][:, 0] = 0
+    x_train, y_train, x_test, y_test = split_test_train(X, Y, n_full, n_train)
 
     start = time()
-    clf.fit(x_train, y_train, h_train, is_full, pass_labels=True, initialize=True)
+    clf.fit(x_train, y_train, initialize=True)
     stop = time()
 
     np.savetxt(models_basedir + prefix + 'syntetic_weak.csv', clf.w)
     with open(models_basedir + prefix + 'syntetic_weak' + '.pickle', 'w') as f:
         cPickle.dump(clf, f)
 
-    print 'Score on test set: %f' % clf.score(x_test, h_test)
+    print 'Score on test set: %f' % clf.score(x_test, y_test)
     print 'Norm of weight vector: |w|=%f' % np.linalg.norm(clf.w)
     print 'Elapsed time: %f s' % (stop - start)
 
     test_error = []
-    for score in clf.staged_score(x_test, h_test):
+    for score in clf.staged_score(x_test, y_test):
         test_error.append(score)
 
     np.savetxt(results_basedir + prefix + 'error_per_iter', np.array(test_error))
@@ -140,9 +145,9 @@ def msrc_weak():
 
     crf = HCRF(n_states=24, n_features=2028, n_edge_features=4,
                inference_method='gco')
-    base_clf = OneSlackSSVM(crf, max_iter=500, C=0.1, verbose=0,
-                            tol=0.1, n_jobs=1, inference_cache=100)
-    clf = LatentSSVM(base_clf, latent_iter=20, verbose=2, tol=0.1)
+    base_clf = OneSlackSSVM(crf, max_iter=100, C=0.1, verbose=0,
+                            tol=0.1, n_jobs=4, inference_cache=10)
+    clf = LatentSSVM(base_clf, latent_iter=20, verbose=2, tol=0.01)
 
     Xtest, Htest = load_msrc('test')
     Xtrain, Htrain = load_msrc('train')
@@ -176,7 +181,10 @@ def msrc_weak():
     np.savetxt(results_basedir + prefix + 'deltas_per_iter', clf.w_deltas)
     np.savetxt(results_basedir + prefix + 'changes_per_iter', clf.changes_count)
 
+    return clf
+
 
 if __name__ == '__main__':
-    msrc_weak()
+    syntetic_weak()
+#    clf = msrc_weak()
 #    test_syntetic_weak('heterogenous')
