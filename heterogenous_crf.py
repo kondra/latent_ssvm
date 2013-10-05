@@ -45,13 +45,6 @@ class HCRF(StructuredModel):
     def _get_features(self, x):
         return x[0]
 
-#    def label_from_latent(self, h):
-#        return np.unique(h)
-
-#    def init_latent(self, X, Y):
-#        return [self.latent(x, y, np.zeros(self.size_psi))
-#                for x, y in zip(X, Y)]
-
     def latent(self, x, y, w):
         if y.full_labeled:
             return y
@@ -156,6 +149,7 @@ class HCRF(StructuredModel):
                                  return_energy=False):
         # we do not support relaxed inference yet
         relaxed = False
+        return_energy = False
 
         self.inference_calls += 1
         self._check_size_w(w)
@@ -241,6 +235,7 @@ class HCRF(StructuredModel):
         """
         # we do not support relaxed inference yet
         relaxed = False
+        return_energy = False
 
         self._check_size_w(w)
         self.inference_calls += 1

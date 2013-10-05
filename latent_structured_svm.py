@@ -95,17 +95,8 @@ class LatentSSVM(BaseSSVM):
             if self.verbose:
                 print("LATENT SVM ITERATION %d" % iteration)
             # find latent variables for ground truth:
-            Y_new = []
-
-
             Y_new = Parallel(n_jobs=self.n_jobs, verbose=0)(
                 delayed(latent)(self.model, x, y, w) for x, y in zip(X, Y))
-
-#            for x, y in zip(X, Y):
-#                if not y.full_labeled:
-#                    Y_new.append(self.model.latent(x, y, w))
-#                else:
-#                    Y_new.append(y)
 
             changes = [np.any(y_new.full != y.full) for y_new, y in zip(Y_new, Y)]
             if not np.any(changes):
