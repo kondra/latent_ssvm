@@ -100,7 +100,7 @@ class LatentSSVM(BaseSSVM):
                 delayed(latent)(self.model, x, y, w) for x, y in zip(X, Y))
 
             changes = [np.any(y_new.full != y.full) for y_new, y in zip(Y_new, Y)]
-            if np.sum(changes) < self.min_changes:
+            if np.sum(changes) <= self.min_changes:
                 if self.verbose:
                     print("too few changes in latent variables of ground truth."
                           " stopping.")
@@ -172,10 +172,6 @@ class LatentSSVM(BaseSSVM):
             score = 1. - np.sum(losses) / len(X)
             yield score
 
-#    def predict(self, X):
-#        prediction = self.base_ssvm.predict(X)
-#        return [self.model.label_from_latent(h) for h in prediction]
-
     def predict_latent(self, X):
         return self.base_ssvm.predict(X)
 
@@ -198,12 +194,6 @@ class LatentSSVM(BaseSSVM):
         score : float
             Average of 1 - loss over training examples.
         """
-        # TODO: rewrite this
-        #losses = [self.model.base_loss(y, y_pred)
-        #          for y, y_pred in zip(Y, self.predict(X))]
-        #max_losses = [self.model.max_loss(y) for y in Y]
-        #return 1. - np.sum(losses) / float(np.sum(max_losses))
-
         losses = [self.model.loss(y, y_pred) / np.sum(y.weights)
                   for y, y_pred in zip(Y, self.predict_latent(X))]
         return 1. - np.sum(losses) / len(X)
