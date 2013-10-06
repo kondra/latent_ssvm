@@ -107,7 +107,8 @@ def syntetic_weak():
                inference_method='gco')
     base_clf = OneSlackSSVM(crf, max_iter=500, C=0.1, verbose=0,
                             tol=0.001, n_jobs=4, inference_cache=100)
-    clf = LatentSSVM(base_clf, latent_iter=15, verbose=2, tol=0.01, n_jobs=4)
+    clf = LatentSSVM(base_clf, latent_iter=15, verbose=2, tol=0.01,
+                     min_changes=10, n_jobs=4)
 
     X, Y = load_syntetic(1)
 

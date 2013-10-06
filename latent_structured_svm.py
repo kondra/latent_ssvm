@@ -39,13 +39,14 @@ class LatentSSVM(BaseSSVM):
     """
 
     def __init__(self, base_ssvm, latent_iter=5, verbose=0, tol=0.1,
-                 n_jobs=1, logger=None):
+                 min_changes=0, n_jobs=1, logger=None):
         self.base_ssvm = base_ssvm
         self.latent_iter = latent_iter
         self.logger = logger
         self.verbose = verbose
         self.tol = tol
         self.n_jobs = n_jobs
+        self.min_changes = min_changes
 
     def fit(self, X, Y, initialize=True):
         """Learn parameters using the concave-convex procedure.
@@ -99,9 +100,9 @@ class LatentSSVM(BaseSSVM):
                 delayed(latent)(self.model, x, y, w) for x, y in zip(X, Y))
 
             changes = [np.any(y_new.full != y.full) for y_new, y in zip(Y_new, Y)]
-            if not np.any(changes):
+            if np.sum(changes) < self.min_changes:
                 if self.verbose:
-                    print("no changes in latent variables of ground truth."
+                    print("too few changes in latent variables of ground truth."
                           " stopping.")
                 iteration -= 1
                 break
