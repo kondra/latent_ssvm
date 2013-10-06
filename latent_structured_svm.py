@@ -137,7 +137,7 @@ class LatentSSVM(BaseSSVM):
                 print("|w-w_prev|: %f" % delta)
             timestamps.append(time() - start_time)
             if self.verbose:
-                print("time elapsed: %f s" % timestamps[-1])
+                print("time elapsed: %f s" % timestamps[-1] - start_time)
             if delta < self.tol:
                 if self.verbose:
                     print("weight vector did not change a lot, break")
@@ -167,9 +167,9 @@ class LatentSSVM(BaseSSVM):
         # is this ok?
         for i in xrange(self.iter_done):
             Y_pred = self._predict_from_iter(X, i)
-            losses = [self.model.loss(y, y_pred) / np.sum(y.weights)
+            losses = [self.model.loss(y, y_pred) / float(np.sum(y.weights))
                       for y, y_pred in zip(Y, Y_pred)]
-            score = 1. - np.sum(losses) / len(X)
+            score = 1. - np.sum(losses) / float(len(X))
             yield score
 
     def predict_latent(self, X):
@@ -194,9 +194,9 @@ class LatentSSVM(BaseSSVM):
         score : float
             Average of 1 - loss over training examples.
         """
-        losses = [self.model.loss(y, y_pred) / np.sum(y.weights)
+        losses = [self.model.loss(y, y_pred) / float(np.sum(y.weights))
                   for y, y_pred in zip(Y, self.predict_latent(X))]
-        return 1. - np.sum(losses) / len(X)
+        return 1. - np.sum(losses) / float(len(X))
 
     @property
     def model(self):

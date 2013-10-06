@@ -158,7 +158,8 @@ class HCRF(StructuredModel):
         edges = self._get_edges(x)
 
         if y.full_labeled:
-            loss_augment_weighted_unaries(unary_potentials, y.full, y.weights)
+            loss_augment_weighted_unaries(unary_potentials, y.full,
+                                          y.weights.astype(np.double))
 
             h = inference_dispatch(unary_potentials, pairwise_potentials,
                                    edges, self.inference_method,
