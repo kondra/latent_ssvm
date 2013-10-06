@@ -244,7 +244,7 @@ class HCRF(StructuredModel):
         edges = self._get_edges(x)
 
         h = inference_dispatch(unary_potentials, pairwise_potentials, edges,
-                                  self.inference_method, relaxed=relaxed,
-                                  return_energy=return_energy)
+                               self.inference_method, relaxed=relaxed,
+                               return_energy=return_energy)
 
         return Label(h, None, None, True)
