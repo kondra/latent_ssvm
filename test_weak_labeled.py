@@ -84,13 +84,15 @@ def split_test_train(X, Y, n_full, n_train):
     y_train = [Label(y[:, 0].astype(np.int32), None, y[:, 1], True)
                for y in Y[:n_full]]
     y_train += [Label(None, np.unique(y[:, 0].astype(np.int32)),
-                      y[:, 1], False) for y in Y[(n_full + 1):(n_train + 1)]]
+                      y[:, 1], False) for y in Y[(n_full):(n_train)]]
+    y_train_full = [Label(y[:, 0].astype(np.int32), None, y[:, 1], True)
+                    for y in Y[:n_train]]
 
-    x_test = X[(n_train + 1):]
+    x_test = X[n_train:]
     y_test = [Label(y[:, 0].astype(np.int32), None, y[:, 1], True)
-              for y in Y[(n_train + 1):]]
+              for y in Y[n_train:]]
 
-    return x_train, y_train, x_test, y_test
+    return x_train, y_train, y_train_full, x_test, y_test
 
 
 def syntetic_weak():
@@ -99,17 +101,19 @@ def syntetic_weak():
     results_basedir = 'results/syntetic/'
     prefix = 'NEWareas_v3_'
     n_full = 10
-    n_train = 400
+    n_train = 100
 
     crf = HCRF(n_states=10, n_features=10, n_edge_features=2,
                inference_method='gco')
     base_clf = OneSlackSSVM(crf, max_iter=500, C=0.1, verbose=0,
                             tol=0.001, n_jobs=4, inference_cache=100)
-    clf = LatentSSVM(base_clf, latent_iter=5, verbose=2, tol=0.01, n_jobs=4)
+    clf = LatentSSVM(base_clf, latent_iter=15, verbose=2, tol=0.01, n_jobs=4)
 
     X, Y = load_syntetic(1)
 
-    x_train, y_train, x_test, y_test = split_test_train(X, Y, n_full, n_train)
+    x_train, y_train, y_train_full, x_test, y_test = split_test_train(X, Y,
+                                                                      n_full,
+                                                                      n_train)
 
     start = time()
     clf.fit(x_train, y_train, initialize=True)
@@ -119,6 +123,7 @@ def syntetic_weak():
     with open(models_basedir + prefix + 'syntetic_weak' + '.pickle', 'w') as f:
         cPickle.dump(clf, f)
 
+    print 'Score on train set: %f' % clf.score(x_train, y_train_full)
     print 'Score on test set: %f' % clf.score(x_test, y_test)
     print 'Norm of weight vector: |w|=%f' % np.linalg.norm(clf.w)
     print 'Elapsed time: %f s' % (stop - start)
