@@ -108,7 +108,7 @@ def syntetic_weak():
     base_clf = OneSlackSSVM(crf, max_iter=500, C=0.1, verbose=0,
                             tol=0.001, n_jobs=4, inference_cache=100)
     clf = LatentSSVM(base_clf, latent_iter=15, verbose=2, tol=0.01,
-                     min_changes=10, n_jobs=4)
+                     min_changes=0, n_jobs=4)
 
     X, Y = load_syntetic(1)
 
@@ -138,49 +138,52 @@ def syntetic_weak():
     np.savetxt(results_basedir + prefix + 'changes_per_iter', clf.changes_count)
 
 
-def msrc_weak():
+def msrc_weak(n_full=20):
     #heterogenous model
-    basedir = '../data/msrc/trainmasks/'
     models_basedir = 'models/msrc/'
     results_basedir = 'results/msrc/'
     prefix = ''
-
-    n_train = 20
-    train_mask = np.genfromtxt(basedir + 'trainMaskX%d.txt' % n_train)
-    train_mask = train_mask[0:276].astype(np.bool)
+    n_train = 276
 
     crf = HCRF(n_states=24, n_features=2028, n_edge_features=4,
                inference_method='gco')
-    base_clf = OneSlackSSVM(crf, max_iter=100, C=0.1, verbose=0,
-                            tol=0.1, n_jobs=4, inference_cache=10)
-    clf = LatentSSVM(base_clf, latent_iter=20, verbose=2, tol=0.01)
+    base_clf = OneSlackSSVM(crf, max_iter=500, C=0.1, verbose=0,
+                            tol=0.01, n_jobs=4, inference_cache=10)
+    clf = LatentSSVM(base_clf, latent_iter=20, verbose=2, tol=0.01, n_jobs=4)
 
-    Xtest, Htest = load_msrc('test')
-    Xtrain, Htrain = load_msrc('train')
+    Xtest, Ytest = load_msrc('test')
+    Ytest = [Label(y[:, 0].astype(np.int32), None, y[:, 1], True)
+             for y in Ytest]
 
-    Ytrain = weak_from_hidden(Htrain)
-    Ytest = weak_from_hidden(Htest)
-
-    is_full = train_mask
-    for i in xrange(len(is_full)):
-        if is_full[i] == False:
-            # remove full-labels
-            Htrain[i][:, 0] = 0
+    train_mask = np.genfromtxt('../data/msrc/trainmasks/trainMaskX%d.txt' % n_full)
+    train_mask = train_mask[0:n_train].astype(np.bool)
+    Xtrain, Ytrain_raw = load_msrc('train')
+    Ytrain_full = [Label(y[:, 0].astype(np.int32), None, y[:, 1], True)
+                   for y in Ytrain_raw]
+    Ytrain = []
+    for y, f in zip(Ytrain_raw, train_mask):
+        if f:
+            Ytrain.append(Label(y[:, 0].astype(np.int32),
+                                None, y[:, 1], True))
+        else:
+            Ytrain.append(Label(None, np.unique(y[:, 0].astype(np.int32)),
+                                y[:, 1], False))
 
     start = time()
-    clf.fit(Xtrain, Ytrain, Htrain, is_full, pass_labels=True, initialize=True)
+    clf.fit(Xtrain, Ytrain, initialize=True)
     stop = time()
 
 #    np.savetxt(models_basedir + prefix + 'msrc_weak.csv', clf.w)
 #    with open(models_basedir + prefix + 'msrc_weak' + '.pickle', 'w') as f:
 #        cPickle.dump(clf, f)
 
-    print 'Score on test set: %f' % clf.score(Xtest, Htest)
+    print 'Score on train set: %f' % clf.score(Xtest, Ytrain_full)
+    print 'Score on test set: %f' % clf.score(Xtest, Ytest)
     print 'Norm of weight vector: |w|=%f' % np.linalg.norm(clf.w)
     print 'Elapsed time: %f s' % (stop - start)
 
     test_error = []
-    for score in clf.staged_score(Xtest, Htest):
+    for score in clf.staged_score(Xtest, Ytest):
         test_error.append(score)
 
     np.savetxt(results_basedir + prefix + 'error_per_iter', np.array(test_error))
@@ -191,6 +194,6 @@ def msrc_weak():
 
 
 if __name__ == '__main__':
-    syntetic_weak()
-#    clf = msrc_weak()
+#    syntetic_weak()
+    clf = msrc_weak()
 #    test_syntetic_weak('heterogenous')
