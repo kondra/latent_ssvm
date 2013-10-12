@@ -2,4 +2,5 @@
 *.pyc
 results
 models
+notebooks
 LOG.markdown
