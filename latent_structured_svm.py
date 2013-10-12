@@ -62,7 +62,9 @@ class LatentSSVM(BaseSSVM):
             for inputs in X. Needs to have the same length as X.
 
         initialize : boolean
-            Initialize w by running SSVM on full-labeled examples.
+            If True initialize w by running SSVM on full-labeled examples.
+            Otherwise initialize w by running SSVM on full-labeled and
+            randomly initialized weak-labeled examples.
         """
 
         w = np.zeros(self.model.size_psi)
@@ -78,18 +80,18 @@ class LatentSSVM(BaseSSVM):
             self.base_ssvm.fit(X, Y)
             return
 
-        # we have some fully labeled examples, others are somehow initialized
+        X1, Y1 = [], []
         if initialize:
-            X1 = []
-            Y1 = []
             for x, y in zip(X, Y):
                 if y.full_labeled:
                     X1.append(x)
                     Y1.append(y)
+        else:
+            # we have some fully labeled examples, others are somehow initialized
+            X1, Y1 = X, Y
 
-            self.base_ssvm.fit(X1, Y1)
-            w = self.base_ssvm.w
-
+        self.base_ssvm.fit(X1, Y1)
+        w = self.base_ssvm.w
         ws.append(w)
 
         for iteration in xrange(self.latent_iter):
@@ -121,14 +123,17 @@ class LatentSSVM(BaseSSVM):
 #                                                constraint[0])
 #                        y_hat, dpsi, _, loss = const
 #                        constraints[i].append([y_hat, dpsi, loss])
-            Y = Y_new
 
-            if iteration > 0:
-                self.base_ssvm.fit(X, Y, constraints=constraints,
-                                   warm_start="soft", initialize=False)
-            else:
-                self.base_ssvm.fit(X, Y, constraints=constraints,
-                                   initialize=False)
+            Y = Y_new
+            self.base_ssvm.fit(X, Y, initialize=False)
+
+            #if iteration > 0:
+            #    self.base_ssvm.fit(X, Y, constraints=constraints,
+            #                       warm_start="soft", initialize=False)
+            #else:
+            #    self.base_ssvm.fit(X, Y, constraints=constraints,
+            #                       initialize=False)
+
             w = self.base_ssvm.w
             ws.append(w)
             delta = np.linalg.norm(ws[-1] - ws[-2])
@@ -137,19 +142,18 @@ class LatentSSVM(BaseSSVM):
                 print("|w-w_prev|: %f" % delta)
             timestamps.append(time() - start_time)
             if self.verbose:
-                print("time elapsed: %f s" % timestamps[-1] - start_time)
+                print("time elapsed: %f s" % (timestamps[-1] - timestamps[-2]))
             if delta < self.tol:
                 if self.verbose:
                     print("weight vector did not change a lot, break")
-                iteration += 1
                 break
             if self.logger is not None:
                 self.logger(self, iteration)
 
-        self.ws = ws
-        self.w_deltas = w_deltas
-        self.changes_count = changes_count
-        self.iter_done = iteration
+        self.ws = np.array(ws)
+        self.w_deltas = np.array(w_deltas)
+        self.changes_count = np.array(changes_count)
+        self.iter_done = iteration + 1
 
     def _predict_from_iter(self, X, i):
         saved_w = self.base_ssvm.w
@@ -159,12 +163,10 @@ class LatentSSVM(BaseSSVM):
         return Y_pred
 
     def staged_predict_latent(self, X):
-        # is this ok?
         for i in xrange(self.iter_done):
             yield self._predict_from_iter(X, i)
 
     def staged_score(self, X, Y):
-        # is this ok?
         for i in xrange(self.iter_done):
             Y_pred = self._predict_from_iter(X, i)
             losses = [self.model.loss(y, y_pred) / float(np.sum(y.weights))
