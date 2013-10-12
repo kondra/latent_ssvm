@@ -69,11 +69,13 @@ class LatentSSVM(BaseSSVM):
 
         w = np.zeros(self.model.size_psi)
         constraints = None
-        ws = []
-        w_deltas = []
-        changes_count = []
+        self.w_history_ = []
+        self.delta_history_ = []
+        self.changes_ = []
         start_time = time()
-        timestamps = [0.0]
+        self.timestamps_ = [0.0]
+        self.objective_curve_ = []
+        self.primal_objective_curve_ = []
 
         # all data is fully labeled, quit
         if np.all([y.full_labeled for y in Y]):
@@ -92,72 +94,67 @@ class LatentSSVM(BaseSSVM):
 
         self.base_ssvm.fit(X1, Y1)
         w = self.base_ssvm.w
-        ws.append(w)
+        self.w_history_.append(w)
+        self.objective_curve_.append(self.base_ssvm.objective_curve_[-1])
+        self.primal_objective_curve_.append(self.base_ssvm.primal_objective_curve_[-1])
 
-        for iteration in xrange(self.latent_iter):
-            if self.verbose:
-                print("LATENT SVM ITERATION %d" % iteration)
-            # find latent variables for ground truth:
-            Y_new = Parallel(n_jobs=self.n_jobs, verbose=0)(
-                delayed(latent)(self.model, x, y, w) for x, y in zip(X, Y))
-
-            changes = [np.any(y_new.full != y.full) for y_new, y in zip(Y_new, Y)]
-            if np.sum(changes) <= self.min_changes:
+        try:
+            for iteration in xrange(self.latent_iter):
                 if self.verbose:
-                    print("too few changes in latent variables of ground truth."
-                          " stopping.")
-                iteration -= 1
-                break
-            if self.verbose:
-                print("changes in H: %d" % np.sum(changes))
-            changes_count.append(np.sum(changes))
-
-# update constraints:
-# seems that this code should not work
-#            if isinstance(self.base_ssvm, NSlackSSVM):
-#                constraints = [[] for i in xrange(len(X))]
-#                for sample, h, i in zip(self.base_ssvm.constraints_, H_new,
-#                                        np.arange(len(X))):
-#                    for constraint in sample:
-#                        const = find_constraint(self.model, X[i], h, w,
-#                                                constraint[0])
-#                        y_hat, dpsi, _, loss = const
-#                        constraints[i].append([y_hat, dpsi, loss])
-
-            Y = Y_new
-            self.base_ssvm.fit(X, Y, initialize=False)
-
-            #if iteration > 0:
-            #    self.base_ssvm.fit(X, Y, constraints=constraints,
-            #                       warm_start="soft", initialize=False)
-            #else:
-            #    self.base_ssvm.fit(X, Y, constraints=constraints,
-            #                       initialize=False)
-
-            w = self.base_ssvm.w
-            ws.append(w)
-            delta = np.linalg.norm(ws[-1] - ws[-2])
-            w_deltas.append(delta)
-            if self.verbose:
-                print("|w-w_prev|: %f" % delta)
-            timestamps.append(time() - start_time)
-            if self.verbose:
-                print("time elapsed: %f s" % (timestamps[-1] - timestamps[-2]))
-            if delta < self.tol:
+                    print("LATENT SVM ITERATION %d" % iteration)
+                # complete latent variables
+                Y_new = Parallel(n_jobs=self.n_jobs, verbose=0)(
+                    delayed(latent)(self.model, x, y, w) for x, y in zip(X, Y))
+    
+                changes = [np.any(y_new.full != y.full) for y_new, y in zip(Y_new, Y)]
+                if np.sum(changes) <= self.min_changes:
+                    if self.verbose:
+                        print("too few changes in latent variables of ground truth."
+                              " stopping.")
+                    iteration -= 1
+                    break
                 if self.verbose:
-                    print("weight vector did not change a lot, break")
-                break
-            if self.logger is not None:
-                self.logger(self, iteration)
+                    print("changes in H: %d" % np.sum(changes))
+                self.changes_.append(np.sum(changes))
+    
+                Y = Y_new
+                self.base_ssvm.fit(X, Y, initialize=False)
+    
+                w = self.base_ssvm.w
+                self.objective_curve_.append(self.base_ssvm.objective_curve_[-1])
+                self.primal_objective_curve_.append(self.base_ssvm.primal_objective_curve_[-1])
+                self.w_history_.append(w)
+                delta = np.linalg.norm(self.w_history_[-1] - self.w_history_[-2])
+                self.delta_history_.append(delta)
+                gap = self.primal_objective_curve_[-1] - self.objective_curve_[-1]
+                if self.verbose:
+                    print("|w-w_prev|: %f" % delta)
+                    print("Final primal objective: %f" % self.primal_objective_curve_[-1])
+                    print("Final cutting-plane objective: %f" % self.objective_curve_[-1])
+                    print("Duality gap: %f" % gap)
+                self.timestamps_.append(time() - start_time)
+                if self.verbose:
+                    print("time elapsed: %f s" % (self.timestamps_[-1] - self.timestamps_[-2]))
+                if delta < self.tol:
+                    if self.verbose:
+                        print("weight vector did not change a lot, break")
+                    break
+                if self.logger is not None:
+                    self.logger(self, iteration)
+        except KeyboardInterrupt:
+            pass
 
-        self.ws = np.array(ws)
-        self.w_deltas = np.array(w_deltas)
-        self.changes_count = np.array(changes_count)
+        self.w_history_ = np.array(self.w_history_)
+        self.delta_history_ = np.array(self.delta_history_)
+        self.changes_ = np.array(self.changes_)
+        self.timestamps_ = np.array(self.timestamps_)
+        self.primal_objective_curve_ = np.array(self.primal_objective_curve_)
+        self.objective_curve_ = np.array(self.objective_curve_)
         self.iter_done = iteration + 1
 
     def _predict_from_iter(self, X, i):
         saved_w = self.base_ssvm.w
-        self.base_ssvm.w = self.ws[i]
+        self.base_ssvm.w = self.w_history_[i]
         Y_pred = self.base_ssvm.predict(X)
         self.base_ssvm.w = saved_w
         return Y_pred
