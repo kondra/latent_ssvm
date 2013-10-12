@@ -3,6 +3,8 @@ import pylab as pl
 
 import os
 
+from results import ExperimentResult
+
 
 def plot_syntetic_full_weak():
     # full + weak plotter for syntetic data
@@ -57,36 +59,6 @@ def plot_syntetic_heterogenous():
     pl.xlim([-0.1, 5.1])
 
 
-def plot_syntetic_heterogenous_per_iter():
-    os.chdir("results/syntetic")
-    prefix = 'areas_v3_'
-
-    errors = np.genfromtxt(prefix + 'error_per_iter')
-    deltas = np.genfromtxt(prefix + 'deltas_per_iter')
-    changes = np.genfromtxt(prefix + 'changes_per_iter')
-
-    x = np.arange(0, errors.size)
-
-    pl.figure()
-    pl.subplot(1, 3, 1)
-    pl.plot(x, errors)
-    pl.scatter(x, errors)
-    pl.xlabel('iter')
-    pl.ylabel('score on test set')
-
-    pl.subplot(1, 3, 2)
-    pl.plot(x, deltas)
-    pl.scatter(x, deltas)
-    pl.xlabel('iter')
-    pl.ylabel('difference of ssvm weight vectors')
-
-    pl.subplot(1, 3, 3)
-    pl.plot(x, changes)
-    pl.scatter(x, changes)
-    pl.xlabel('iter')
-    pl.ylabel('changes in inferred latent labelling')
-
-
 def plot_msrc_full():
     # plot results of ssvm trained on full labeled msrc data
     os.chdir("results/msrc")
@@ -102,7 +74,39 @@ def plot_msrc_full():
     pl.ylim([0, 1])
     pl.xlim([-0.1, 5.1])
 
-if __name__ == '__main__':
-    plot_syntetic_heterogenous_per_iter()
 
-    pl.show()
+def plot_heterogenous_per_iter(result):
+    scores = result.test_scores
+    deltas = result.delta_history
+    changes = result.changes
+    x = np.arange(0, scores.size)
+
+    pl.figure()
+    pl.plot(x, scores)
+    pl.scatter(x, scores)
+    pl.xlabel('iteration')
+    pl.ylabel('score on test set')
+
+    pl.figure()
+    pl.plot(x, deltas)
+    pl.scatter(x, deltas)
+    pl.xlabel('iteration')
+    pl.ylabel('difference of ssvm weight vectors')
+
+    pl.figure()
+    pl.plot(x, changes)
+    pl.scatter(x, changes)
+    pl.xlabel('iteration')
+    pl.ylabel('changes in inferred latent labelling')
+
+    pl.figure()
+    pl.plot(x, result.primal_objective_curve)
+    pl.scatter(x, result.primal_objective_curve)
+    pl.xlabel('iteration')
+    pl.ylabel('primal objective')
+
+    pl.figure()
+    pl.plot(x, result.objective_curve)
+    pl.scatter(x, result.objective_curve)
+    pl.xlabel('iteration')
+    pl.ylabel('cutting plane objective')
