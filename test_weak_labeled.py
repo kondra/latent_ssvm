@@ -12,6 +12,7 @@ from data_loader import load_msrc
 from common import compute_error
 from common import weak_from_hidden
 from label import Label
+from results import ExperimentResult
 
 # testing with weakly labeled train set
 
@@ -76,16 +77,6 @@ def test_syntetic_weak(mode):
         np.savetxt('results/heterogenous.csv', results, delimiter=',')
 
     return results
-
-
-class ExperimentResult(object):
-    def __init__(self, name, test_scores, changes_count, w_deltas, ws, **kwargs):
-        self.name = name
-        self.test_scores = test_scores
-        self.changes_count = changes_count
-        self.w_deltas = w_deltas
-        self.ws = ws
-        self.args = kwargs
 
 
 def split_test_train(X, Y, n_full, n_train):
