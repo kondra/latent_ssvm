@@ -23,9 +23,6 @@ class LatentSSVM(BaseSSVM):
     latent_iter : int (default=5)
         Number of iterations in the completion / refit loop.
 
-    logger : object
-        Logger instance.
-
     verbose : int (default=0)
         Verbosity level.
 
@@ -39,10 +36,9 @@ class LatentSSVM(BaseSSVM):
     """
 
     def __init__(self, base_ssvm, latent_iter=5, verbose=0, tol=0.1,
-                 min_changes=0, n_jobs=1, logger=None):
+                 min_changes=0, n_jobs=1):
         self.base_ssvm = base_ssvm
         self.latent_iter = latent_iter
-        self.logger = logger
         self.verbose = verbose
         self.tol = tol
         self.n_jobs = n_jobs
@@ -119,7 +115,7 @@ class LatentSSVM(BaseSSVM):
     
                 Y = Y_new
                 self.base_ssvm.fit(X, Y, initialize=False)
-    
+
                 w = self.base_ssvm.w
                 self.objective_curve_.append(self.base_ssvm.objective_curve_[-1])
                 self.primal_objective_curve_.append(self.base_ssvm.primal_objective_curve_[-1])
@@ -127,20 +123,17 @@ class LatentSSVM(BaseSSVM):
                 delta = np.linalg.norm(self.w_history_[-1] - self.w_history_[-2])
                 self.delta_history_.append(delta)
                 gap = self.primal_objective_curve_[-1] - self.objective_curve_[-1]
+                self.timestamps_.append(time() - start_time)
                 if self.verbose:
                     print("|w-w_prev|: %f" % delta)
                     print("Final primal objective: %f" % self.primal_objective_curve_[-1])
                     print("Final cutting-plane objective: %f" % self.objective_curve_[-1])
                     print("Duality gap: %f" % gap)
-                self.timestamps_.append(time() - start_time)
-                if self.verbose:
                     print("time elapsed: %f s" % (self.timestamps_[-1] - self.timestamps_[-2]))
                 if delta < self.tol:
                     if self.verbose:
                         print("weight vector did not change a lot, break")
                     break
-                if self.logger is not None:
-                    self.logger(self, iteration)
         except KeyboardInterrupt:
             pass
 
