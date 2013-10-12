@@ -127,14 +127,16 @@ def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
     for score in clf.staged_score(x_test, y_test):
         test_scores.append(score)
 
-    result = ExperimentResult("syntetic weak", np.array(test_scores), clf.changes_,
+    result = ExperimentResult(np.array(test_scores), clf.changes_,
                               clf.w_history_, clf.delta_history_, clf.primal_objective_curve_, 
                               clf.objective_curve_, clf.timestamps_, train_score=train_score,
                               test_score=test_score, time_elapsed=time_elapsed,
                               n_full=n_full, n_train=n_train, C=C, dataset=dataset,
                               latent_iter=latent_iter, max_iter=max_iter,
                               inner_tol=inner_tol, outer_tol=outer_tol,
-                              min_changes=min_changes, initialize=initialize)
+                              min_changes=min_changes, initialize=initialize,
+                              dataset_name='syntetic', annotation_type='image-level labelling',
+                              label_type='full+weak')
     return result
 
 
@@ -183,12 +185,14 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
     for score in clf.staged_score(Xtest, Ytest):
         test_scores.append(score)
 
-    result = ExperimentResult("msrc weak", np.array(test_scores), clf.changes_,
+    result = ExperimentResult(np.array(test_scores), clf.changes_,
                               clf.w_history_, clf.delta_history_, clf.primal_objective_curve_, 
                               clf.objective_curve_, clf.timestamps_, train_score=train_score,
                               test_score=test_score, time_elapsed=time_elapsed,
                               n_full=n_full, n_train=n_train, C=C,
                               latent_iter=latent_iter, max_iter=max_iter,
                               inner_tol=inner_tol, outer_tol=outer_tol,
-                              min_changes=min_changes, initialize=initialize)
+                              min_changes=min_changes, initialize=initialize,
+                              dataset_name='msrc', annotation_type='image-level labelling',
+                              label_type='full+weak')
     return result
