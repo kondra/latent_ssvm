@@ -1,6 +1,4 @@
 import numpy as np
-import pylab as pl
-import cPickle
 
 from pystruct.learners import OneSlackSSVM
 from time import time
@@ -19,6 +17,7 @@ from label import Label
 
 
 def test_syntetic_weak(mode):
+    # needs refactoring
     # Syntetic data
     # test latentSSVM on different train set sizes & on different train sets
     # mode can be 'heterogenous' or 'latent'
@@ -79,6 +78,16 @@ def test_syntetic_weak(mode):
     return results
 
 
+class ExperimentResult(object):
+    def __init__(self, name, test_scores, changes_count, w_deltas, ws, **kwargs):
+        self.name = name
+        self.test_scores = test_scores
+        self.changes_count = changes_count
+        self.w_deltas = w_deltas
+        self.ws = ws
+        self.args = kwargs
+
+
 def split_test_train(X, Y, n_full, n_train):
     x_train = X[:n_train]
     y_train = [Label(y[:, 0].astype(np.int32), None, y[:, 1], True)
@@ -95,61 +104,57 @@ def split_test_train(X, Y, n_full, n_train):
     return x_train, y_train, y_train_full, x_test, y_test
 
 
-def syntetic_weak():
-    #heterogenous model
-    models_basedir = 'models/syntetic/'
-    results_basedir = 'results/syntetic/'
-    prefix = 'NEWareas_v3_'
-    n_full = 10
-    n_train = 100
-
+def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
+                  max_iter=500, inner_tol=0.001, outer_tol=0.01, min_changes=0,
+                  initialize=True):
     crf = HCRF(n_states=10, n_features=10, n_edge_features=2,
                inference_method='gco')
-    base_clf = OneSlackSSVM(crf, max_iter=500, C=0.1, verbose=0,
-                            tol=0.001, n_jobs=4, inference_cache=100)
-    clf = LatentSSVM(base_clf, latent_iter=15, verbose=2, tol=0.01,
-                     min_changes=0, n_jobs=4)
+    base_clf = OneSlackSSVM(crf, max_iter=max_iter, C=C, verbose=0,
+                            tol=inner_tol, n_jobs=4, inference_cache=100)
+    clf = LatentSSVM(base_clf, latent_iter=latent_iter, verbose=2,
+                     tol=outer_tol, min_changes=min_changes, n_jobs=4)
 
-    X, Y = load_syntetic(1)
+    X, Y = load_syntetic(dataset)
 
-    x_train, y_train, y_train_full, x_test, y_test = split_test_train(X, Y,
-                                                                      n_full,
-                                                                      n_train)
+    x_train, y_train, y_train_full, x_test, y_test = \
+        split_test_train(X, Y, n_full, n_train)
 
     start = time()
-    clf.fit(x_train, y_train, initialize=True)
+    clf.fit(x_train, y_train, initialize=initialize)
     stop = time()
 
-    np.savetxt(models_basedir + prefix + 'syntetic_weak.csv', clf.w)
-    with open(models_basedir + prefix + 'syntetic_weak' + '.pickle', 'w') as f:
-        cPickle.dump(clf, f)
+    train_score = clf.score(x_train, y_train_full)
+    test_score = clf.score(x_test, y_test)
+    time_elapsed = stop - start
 
-    print 'Score on train set: %f' % clf.score(x_train, y_train_full)
-    print 'Score on test set: %f' % clf.score(x_test, y_test)
+    print 'Score on train set: %f' % train_score
+    print 'Score on test set: %f' % test_score
     print 'Norm of weight vector: |w|=%f' % np.linalg.norm(clf.w)
-    print 'Elapsed time: %f s' % (stop - start)
+    print 'Elapsed time: %f s' % time_elapsed
 
-    test_error = []
+    test_scores = []
     for score in clf.staged_score(x_test, y_test):
-        test_error.append(score)
+        test_scores.append(score)
 
-    np.savetxt(results_basedir + prefix + 'error_per_iter', np.array(test_error))
-    np.savetxt(results_basedir + prefix + 'deltas_per_iter', clf.w_deltas)
-    np.savetxt(results_basedir + prefix + 'changes_per_iter', clf.changes_count)
+    result = ExperimentResult("syntetic weak", np.array(test_scores), clf.changes_count,
+                              clf.w_deltas, clf.ws, train_score=train_score,
+                              test_score=test_score, time_elapsed=time_elapsed,
+                              n_full=n_full, n_train=n_train, C=C, dataset=dataset,
+                              latent_iter=latent_iter, max_iter=max_iter,
+                              inner_tol=inner_tol, outer_tol=outer_tol,
+                              min_changes=min_changes, initialize=initialize)
+    return result
 
 
-def msrc_weak(n_full=20):
-    #heterogenous model
-    models_basedir = 'models/msrc/'
-    results_basedir = 'results/msrc/'
-    prefix = ''
-    n_train = 276
-
+def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
+              max_iter=500, inner_tol=0.001, outer_tol=0.01, min_changes=0,
+              initialize=True):
     crf = HCRF(n_states=24, n_features=2028, n_edge_features=4,
                inference_method='gco')
-    base_clf = OneSlackSSVM(crf, max_iter=500, C=0.1, verbose=0,
-                            tol=0.01, n_jobs=4, inference_cache=10)
-    clf = LatentSSVM(base_clf, latent_iter=20, verbose=2, tol=0.01, n_jobs=4)
+    base_clf = OneSlackSSVM(crf, max_iter=max_iter, C=C, verbose=0,
+                            tol=inner_tol, n_jobs=4, inference_cache=10)
+    clf = LatentSSVM(base_clf, latent_iter=latent_iter, verbose=2,
+                     tol=outer_tol, n_jobs=4)
 
     Xtest, Ytest = load_msrc('test')
     Ytest = [Label(y[:, 0].astype(np.int32), None, y[:, 1], True)
@@ -173,27 +178,25 @@ def msrc_weak(n_full=20):
     clf.fit(Xtrain, Ytrain, initialize=True)
     stop = time()
 
-#    np.savetxt(models_basedir + prefix + 'msrc_weak.csv', clf.w)
-#    with open(models_basedir + prefix + 'msrc_weak' + '.pickle', 'w') as f:
-#        cPickle.dump(clf, f)
+    train_score = clf.score(Xtrain, Ytrain_full)
+    test_score = clf.score(Xtest, Ytest)
+    time_elapsed = stop - start 
 
-    print 'Score on train set: %f' % clf.score(Xtest, Ytrain_full)
-    print 'Score on test set: %f' % clf.score(Xtest, Ytest)
+    print 'Score on train set: %f' % train_score
+    print 'Score on test set: %f' % test_score
     print 'Norm of weight vector: |w|=%f' % np.linalg.norm(clf.w)
-    print 'Elapsed time: %f s' % (stop - start)
+    print 'Elapsed time: %f s' % time_elapsed
 
-    test_error = []
+    test_scores = []
     for score in clf.staged_score(Xtest, Ytest):
-        test_error.append(score)
-
-    np.savetxt(results_basedir + prefix + 'error_per_iter', np.array(test_error))
-    np.savetxt(results_basedir + prefix + 'deltas_per_iter', clf.w_deltas)
-    np.savetxt(results_basedir + prefix + 'changes_per_iter', clf.changes_count)
-
-    return clf
+        test_scores.append(score)
 
 
-if __name__ == '__main__':
-#    syntetic_weak()
-    clf = msrc_weak()
-#    test_syntetic_weak('heterogenous')
+    result = ExperimentResult("msrc weak", np.array(test_scores), clf.changes_count,
+                              clf.w_deltas, clf.ws, train_score=train_score,
+                              test_score=test_score, time_elapsed=time_elapsed,
+                              n_full=n_full, n_train=n_train, C=C,
+                              latent_iter=latent_iter, max_iter=max_iter,
+                              inner_tol=inner_tol, outer_tol=outer_tol,
+                              min_changes=min_changes, initialize=initialize)
+    return result
