@@ -3,7 +3,7 @@
 
 class ExperimentResult(object):
     def __init__(self, name, test_scores, changes, w_history, delta_history,
-                 primal_objective_curve, objective_curve, **kwargs):
+                 primal_objective_curve, objective_curve, timestamps, **kwargs):
         self.name = name
         self.test_scores = test_scores
         self.changes = changes
