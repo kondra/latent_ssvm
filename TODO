@@ -1,4 +1,4 @@
-* add support to superpixels area
+* DONE: add support to superpixels area
 * DONE: add model serialization
 * DONE: add stopping criterion
 * add more complex loss functions in models
