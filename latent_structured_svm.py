@@ -67,6 +67,7 @@ class LatentSSVM(BaseSSVM):
         constraints = None
         self.w_history_ = []
         self.delta_history_ = []
+        self.base_iter_history_ = []
         self.changes_ = []
         start_time = time()
         self.timestamps_ = [0.0]
@@ -93,6 +94,7 @@ class LatentSSVM(BaseSSVM):
         self.w_history_.append(w)
         self.objective_curve_.append(self.base_ssvm.objective_curve_[-1])
         self.primal_objective_curve_.append(self.base_ssvm.primal_objective_curve_[-1])
+        self.base_iter_history_.append(len(self.base_ssvm.primal_objective_curve_))
 
         try:
             for iteration in xrange(self.latent_iter):
@@ -119,6 +121,7 @@ class LatentSSVM(BaseSSVM):
                 w = self.base_ssvm.w
                 self.objective_curve_.append(self.base_ssvm.objective_curve_[-1])
                 self.primal_objective_curve_.append(self.base_ssvm.primal_objective_curve_[-1])
+                self.base_iter_history_.append(len(self.base_ssvm.primal_objective_curve_))
                 self.w_history_.append(w)
                 delta = np.linalg.norm(self.w_history_[-1] - self.w_history_[-2])
                 self.delta_history_.append(delta)
@@ -129,7 +132,8 @@ class LatentSSVM(BaseSSVM):
                     print("Final primal objective: %f" % self.primal_objective_curve_[-1])
                     print("Final cutting-plane objective: %f" % self.objective_curve_[-1])
                     print("Duality gap: %f" % gap)
-                    print("time elapsed: %f s" % (self.timestamps_[-1] - self.timestamps_[-2]))
+                    print("Finished in %d iterations" % self.base_iter_history_[-1])
+                    print("Time elapsed: %f s" % (self.timestamps_[-1] - self.timestamps_[-2]))
                 if delta < self.tol:
                     if self.verbose:
                         print("weight vector did not change a lot, break")
@@ -143,6 +147,7 @@ class LatentSSVM(BaseSSVM):
         self.timestamps_ = np.array(self.timestamps_)
         self.primal_objective_curve_ = np.array(self.primal_objective_curve_)
         self.objective_curve_ = np.array(self.objective_curve_)
+        self.base_iter_history_ = np.array(self.base_iter_history_)
         self.iter_done = iteration + 1
 
     def _predict_from_iter(self, X, i):

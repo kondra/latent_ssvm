@@ -17,7 +17,8 @@ def save(result, name, comment):
 
 class ExperimentResult(object):
     def __init__(self, test_scores, changes, w_history, delta_history,
-                 primal_objective_curve, objective_curve, timestamps, **kwargs):
+                 primal_objective_curve, objective_curve, timestamps,
+                 base_iter_history, **kwargs):
         # generated data like scores per iteration, model parameters
         # stored in hdf5 file
         self.test_scores = test_scores
@@ -27,6 +28,7 @@ class ExperimentResult(object):
         self.primal_objective_curve = primal_objective_curve
         self.objective_curve = objective_curve
         self.timestamps = timestamps
+        self.base_iter_history = base_iter_history
 
         # meta information, comments, parameters
         # this will be stored in mongodb
@@ -53,6 +55,7 @@ class ExperimentResult(object):
         grp.create_dataset("primal_objective_curve", data=self.primal_objective_curve)
         grp.create_dataset("objective_curve", data=self.objective_curve)
         grp.create_dataset("timestamps", data=self.timestamps)
+        grp.create_dataset("base_iter_history", data=self.base_iter_history)
         f.close()
         return grp.id.id
 

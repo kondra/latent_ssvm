@@ -129,7 +129,8 @@ def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
 
     result = ExperimentResult(np.array(test_scores), clf.changes_,
                               clf.w_history_, clf.delta_history_, clf.primal_objective_curve_, 
-                              clf.objective_curve_, clf.timestamps_, train_score=train_score,
+                              clf.objective_curve_, clf.timestamps_, clf.base_iter_history_,
+                              train_score=train_score,
                               test_score=test_score, time_elapsed=time_elapsed,
                               n_full=n_full, n_train=n_train, C=C, dataset=dataset,
                               latent_iter=latent_iter, max_iter=max_iter,
@@ -169,7 +170,7 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
                                 y[:, 1], False))
 
     start = time()
-    clf.fit(Xtrain, Ytrain, initialize=True)
+    clf.fit(Xtrain, Ytrain, initialize=initialize)
     stop = time()
 
     train_score = clf.score(Xtrain, Ytrain_full)
@@ -187,7 +188,8 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
 
     result = ExperimentResult(np.array(test_scores), clf.changes_,
                               clf.w_history_, clf.delta_history_, clf.primal_objective_curve_, 
-                              clf.objective_curve_, clf.timestamps_, train_score=train_score,
+                              clf.objective_curve_, clf.timestamps_, clf.base_iter_history_,
+                              train_score=train_score,
                               test_score=test_score, time_elapsed=time_elapsed,
                               n_full=n_full, n_train=n_train, C=C,
                               latent_iter=latent_iter, max_iter=max_iter,
