@@ -84,7 +84,7 @@ def plot_heterogenous_per_iter(result):
     pl.rc('text', usetex=True)
     pl.rc('font', family='serif')
 
-    pl.figure()
+    pl.figure(figsize=(10,10), dpi=96)
 
     pl.subplot(2, 2, 1)
     pl.title('score on test set')
@@ -111,7 +111,7 @@ def plot_heterogenous_per_iter(result):
     pl.title('objective')
     pl.plot(x[1:], result.primal_objective_curve[1:-1], label='primal')
     pl.scatter(x[1:], result.primal_objective_curve[1:-1])
-    pl.plot(x[1:], result.objective_curve[1:-1], c='r', label='cuttine-plane')
+    pl.plot(x[1:], result.objective_curve[1:-1], c='r', label='cutting-plane')
     pl.scatter(x[1:], result.objective_curve[1:-1], c='r')
     pl.xlabel('iteration')
     pl.legend(loc='upper right')
