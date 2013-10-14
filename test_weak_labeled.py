@@ -97,8 +97,8 @@ def split_test_train(X, Y, n_full, n_train):
 
 def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
                   max_iter=500, inner_tol=0.001, outer_tol=0.01, min_changes=0,
-                  initialize=True):
-    crf = HCRF(n_states=10, n_features=10, n_edge_features=2,
+                  initialize=True, alpha=0.1):
+    crf = HCRF(n_states=10, n_features=10, n_edge_features=2, alpha=alpha,
                inference_method='gco')
     base_clf = OneSlackSSVM(crf, max_iter=max_iter, C=C, verbose=0,
                             tol=inner_tol, n_jobs=4, inference_cache=100)
@@ -134,7 +134,7 @@ def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
                               test_score=test_score, time_elapsed=time_elapsed,
                               n_full=n_full, n_train=n_train, C=C, dataset=dataset,
                               latent_iter=latent_iter, max_iter=max_iter,
-                              inner_tol=inner_tol, outer_tol=outer_tol,
+                              inner_tol=inner_tol, outer_tol=outer_tol, alpha=alpha,
                               min_changes=min_changes, initialize=initialize,
                               dataset_name='syntetic', annotation_type='image-level labelling',
                               label_type='full+weak')
@@ -143,8 +143,8 @@ def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
 
 def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
               max_iter=500, inner_tol=0.001, outer_tol=0.01, min_changes=0,
-              initialize=True):
-    crf = HCRF(n_states=24, n_features=2028, n_edge_features=4,
+              initialize=True, alpha=0.1):
+    crf = HCRF(n_states=24, n_features=2028, n_edge_features=4, alpha=alpha,
                inference_method='gco')
     base_clf = OneSlackSSVM(crf, max_iter=max_iter, C=C, verbose=0,
                             tol=inner_tol, n_jobs=4, inference_cache=10)
@@ -193,7 +193,7 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
                               test_score=test_score, time_elapsed=time_elapsed,
                               n_full=n_full, n_train=n_train, C=C,
                               latent_iter=latent_iter, max_iter=max_iter,
-                              inner_tol=inner_tol, outer_tol=outer_tol,
+                              inner_tol=inner_tol, outer_tol=outer_tol, alpha=alpha,
                               min_changes=min_changes, initialize=initialize,
                               dataset_name='msrc', annotation_type='image-level labelling',
                               label_type='full+weak')

@@ -1,6 +1,6 @@
 ######################
-# (c) 2012 Andreas Mueller <amueller@ais.uni-bonn.de>
 # (c) 2013 Dmitry Kondrashkin <kondra2lp@gmail.com>
+# (c) 2012 Andreas Mueller <amueller@ais.uni-bonn.de>
 
 import numpy as np
 
@@ -13,7 +13,7 @@ from label import Label
 
 class HCRF(StructuredModel):
     def __init__(self, n_states=2, n_features=None, n_edge_features=1,
-                 inference_method='gco'):
+                 inference_method='gco', alpha=1):
         if inference_method != 'gco':
             # only gco inference_method supported: we need label costs
             raise NotImplementedError
@@ -23,6 +23,7 @@ class HCRF(StructuredModel):
         self.n_features = n_features
         self.inference_method = inference_method
         self.inference_calls = 0
+        self.alpha = alpha
         self.size_psi = (self.n_states * self.n_features +
                          self.n_edge_features)
 
@@ -129,6 +130,8 @@ class HCRF(StructuredModel):
         unaries_acc = np.dot(unary_marginals.T, features)
 
         psi_vector = np.hstack([unaries_acc.ravel(), pw.ravel()])
+        if not y.full_labeled:
+            psi_vector *= self.alpha
         return psi_vector
 
     def loss(self, y, y_hat):
@@ -143,7 +146,7 @@ class HCRF(StructuredModel):
                     loss += c
                 elif label not in y.weak:
                     loss += np.sum(y.weights * (y_hat.full == label))
-            return loss
+            return loss * self.alpha
 
     def loss_augmented_inference(self, x, y, w, relaxed=False,
                                  return_energy=False):
