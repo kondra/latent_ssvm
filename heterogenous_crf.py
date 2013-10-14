@@ -117,6 +117,8 @@ class HCRF(StructuredModel):
         n_nodes = features.shape[0]
         edge_features = x[2]
 
+        full_labeled = y.full_labeled
+
         y = y.full
         y = y.reshape(n_nodes)
         gx = np.ogrid[:n_nodes]
@@ -130,7 +132,7 @@ class HCRF(StructuredModel):
         unaries_acc = np.dot(unary_marginals.T, features)
 
         psi_vector = np.hstack([unaries_acc.ravel(), pw.ravel()])
-        if not y.full_labeled:
+        if not full_labeled:
             psi_vector *= self.alpha
         return psi_vector
 
