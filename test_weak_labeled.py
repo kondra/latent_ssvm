@@ -149,7 +149,7 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
     base_clf = OneSlackSSVM(crf, max_iter=max_iter, C=C, verbose=0,
                             tol=inner_tol, n_jobs=4, inference_cache=10)
     clf = LatentSSVM(base_clf, latent_iter=latent_iter, verbose=2,
-                     tol=outer_tol, n_jobs=4)
+                     tol=outer_tol, min_changes=min_changes, n_jobs=4)
 
     Xtest, Ytest = load_msrc('test')
     Ytest = [Label(y[:, 0].astype(np.int32), None, y[:, 1], True)
