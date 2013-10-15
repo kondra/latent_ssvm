@@ -4,3 +4,4 @@
 * add more complex loss functions in models
 * partially DONE: review models code
 * write docstring for LatentSSVM class
+* add support for sparse features
