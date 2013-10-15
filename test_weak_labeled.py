@@ -143,9 +143,9 @@ def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
 
 def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
               max_iter=500, inner_tol=0.001, outer_tol=0.01, min_changes=0,
-              initialize=True, alpha=0.1):
+              initialize=True, alpha=0.1, n_inference_iter=5):
     crf = HCRF(n_states=24, n_features=2028, n_edge_features=4, alpha=alpha,
-               inference_method='gco')
+               inference_method='gco', n_iter=n_inference_iter)
     base_clf = OneSlackSSVM(crf, max_iter=max_iter, C=C, verbose=0,
                             tol=inner_tol, n_jobs=4, inference_cache=10)
     clf = LatentSSVM(base_clf, latent_iter=latent_iter, verbose=2,
@@ -189,8 +189,8 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
     result = ExperimentResult(np.array(test_scores), clf.changes_,
                               clf.w_history_, clf.delta_history_, clf.primal_objective_curve_, 
                               clf.objective_curve_, clf.timestamps_, clf.base_iter_history_,
-                              train_score=train_score,
-                              test_score=test_score, time_elapsed=time_elapsed,
+                              train_score=train_score, test_score=test_score,
+                              time_elapsed=time_elapsed, n_inference_iter=n_inference_iter,
                               n_full=n_full, n_train=n_train, C=C,
                               latent_iter=latent_iter, max_iter=max_iter,
                               inner_tol=inner_tol, outer_tol=outer_tol, alpha=alpha,

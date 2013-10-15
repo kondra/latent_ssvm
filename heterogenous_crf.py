@@ -13,7 +13,7 @@ from label import Label
 
 class HCRF(StructuredModel):
     def __init__(self, n_states=2, n_features=None, n_edge_features=1,
-                 inference_method='gco', alpha=1):
+                 inference_method='gco', n_iter=5, alpha=1):
         if inference_method != 'gco':
             # only gco inference_method supported: we need label costs
             raise NotImplementedError
@@ -24,6 +24,7 @@ class HCRF(StructuredModel):
         self.inference_method = inference_method
         self.inference_calls = 0
         self.alpha = alpha
+        self.n_iter = n_iter
         self.size_psi = (self.n_states * self.n_features +
                          self.n_edge_features)
 
@@ -169,7 +170,8 @@ class HCRF(StructuredModel):
             h = inference_dispatch(unary_potentials, pairwise_potentials,
                                    edges, self.inference_method,
                                    relaxed=relaxed,
-                                   return_energy=return_energy)
+                                   return_energy=return_energy,
+                                   n_iter=self.n_iter)
             return Label(h, None, y.weights, True)
         else:
             # this is weak labeled example
@@ -201,7 +203,7 @@ class HCRF(StructuredModel):
             label_cost = (1000 * label_cost).copy().astype(np.int32)
 
             h = cut_from_graph_gen_potts(unary_potentials, pairwise_cost,
-                                         label_cost=label_cost)
+                                         label_cost=label_cost, n_iter=self.n_iter)
             h = h[0].reshape(shape_org)
 
             return Label(h, None, y.weights, False)
