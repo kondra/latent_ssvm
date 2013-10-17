@@ -77,6 +77,14 @@ class LatentSSVM(BaseSSVM):
         # all data is fully labeled, quit
         if np.all([y.full_labeled for y in Y]):
             self.base_ssvm.fit(X, Y)
+            self.w_history_ = np.array([self.base_ssvm.w])
+            self.delta_history_ = np.array([])
+            self.changes_ = np.array([])
+            self.timestamps_ = np.array([time() - start_time])
+            self.primal_objective_curve_ = np.array([self.base_ssvm.primal_objective_curve_[-1]])
+            self.objective_curve_ = np.array([self.base_ssvm.objective_curve_[-1]])
+            self.base_iter_history_ = np.array([len(self.base_ssvm.primal_objective_curve_)])
+            self.iter_done = 1
             return
 
         X1, Y1 = [], []
