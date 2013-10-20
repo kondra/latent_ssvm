@@ -97,7 +97,7 @@ def split_test_train(X, Y, n_full, n_train):
 
 def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
                   max_iter=500, inner_tol=0.001, outer_tol=0.01, min_changes=0,
-                  initialize=True, alpha=0.1):
+                  initialize=True, alpha=0.1, n_inference_iter=5):
     crf = HCRF(n_states=10, n_features=10, n_edge_features=2, alpha=alpha,
                inference_method='gco')
     base_clf = OneSlackSSVM(crf, max_iter=max_iter, C=C, verbose=0,
@@ -118,6 +118,7 @@ def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
     test_score = clf.score(x_test, y_test)
     time_elapsed = stop - start
 
+    print '============================================================'
     print 'Score on train set: %f' % train_score
     print 'Score on test set: %f' % test_score
     print 'Norm of weight vector: |w|=%f' % np.linalg.norm(clf.w)
@@ -127,30 +128,41 @@ def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
     for score in clf.staged_score(x_test, y_test):
         test_scores.append(score)
 
-    result = ExperimentResult(np.array(test_scores), clf.changes_,
-                              clf.w_history_, clf.delta_history_, clf.primal_objective_curve_, 
-                              clf.objective_curve_, clf.timestamps_, clf.base_iter_history_,
-                              train_score=train_score,
-                              test_score=test_score, time_elapsed=time_elapsed,
-                              n_full=n_full, n_train=n_train, C=C, dataset=dataset,
-                              latent_iter=latent_iter, max_iter=max_iter,
-                              inner_tol=inner_tol, outer_tol=outer_tol, alpha=alpha,
-                              min_changes=min_changes, initialize=initialize,
-                              dataset_name='syntetic', annotation_type='image-level labelling',
-                              label_type='full+weak')
-    return result
+    exp_data = {}
+    exp_data['test_scores'] = np.array(test_scores)
+    exp_data['changes'] = clf.changes_
+    exp_data['w_history'] = clf.w_history_
+    exp_data['delta_history'] = clf.delta_history_
+    exp_data['primal_objective_curve'] = clf.primal_objective_curve_
+    exp_data['objective_curve'] = clf.objective_curve_
+    exp_data['timestamps'] = clf.time_stamps_
+    exp_data['base_iter_hitory'] = clf.base_iter_history_
+
+    meta_data = {}
+    meta_data['dataset_name'] = 'syntetic'
+    meta_data['annotation_type'] = 'image-level labelling'
+    meta_data['label_type'] = 'full+weak'
+    meta_data['train_score'] = train_score
+    meta_data['test_score'] = test_score
+    meta_data['time_elapsed'] = time_elapsed
+
+    meta_data['n_inference_iter'] = n_inference_iter
+    meta_data['n_full'] = n_full
+    meta_data['n_train'] = n_train
+    meta_data['C'] = C
+    meta_data['dataset'] = dataset
+    meta_data['latent_iter'] = latent_iter
+    meta_data['max_iter'] = max_iter
+    meta_data['inner_tol'] = inner_tol
+    meta_data['outer_tol'] = outer_tol
+    meta_data['alpha'] = alpha
+    meta_data['min_changes'] = min_changes
+    meta_data['initialize'] = initialize
+
+    return ExperimentResult(exp_data, meta_data)
 
 
-def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
-              max_iter=500, inner_tol=0.001, outer_tol=0.01, min_changes=0,
-              initialize=True, alpha=0.1, n_inference_iter=5):
-    crf = HCRF(n_states=24, n_features=2028, n_edge_features=4, alpha=alpha,
-               inference_method='gco', n_iter=n_inference_iter)
-    base_clf = OneSlackSSVM(crf, max_iter=max_iter, C=C, verbose=2,
-                            tol=inner_tol, n_jobs=4, inference_cache=10)
-    clf = LatentSSVM(base_clf, latent_iter=latent_iter, verbose=2,
-                     tol=outer_tol, min_changes=min_changes, n_jobs=4)
-
+def msrc_load(n_full, n_train):
     Xtest, Ytest = load_msrc('test')
     Ytest = [Label(y[:, 0].astype(np.int32), None, y[:, 1], True)
              for y in Ytest]
@@ -168,6 +180,21 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
         else:
             Ytrain.append(Label(None, np.unique(y[:, 0].astype(np.int32)),
                                 y[:, 1], False))
+
+    return Xtrain, Ytrain, Ytrain_full, Xtest, Ytest
+
+
+def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
+              max_iter=500, inner_tol=0.001, outer_tol=0.01, min_changes=0,
+              initialize=True, alpha=0.1, n_inference_iter=5):
+    crf = HCRF(n_states=24, n_features=2028, n_edge_features=4, alpha=alpha,
+               inference_method='gco', n_iter=n_inference_iter)
+    base_clf = OneSlackSSVM(crf, max_iter=max_iter, C=C, verbose=2,
+                            tol=inner_tol, n_jobs=4, inference_cache=10)
+    clf = LatentSSVM(base_clf, latent_iter=latent_iter, verbose=2,
+                     tol=outer_tol, min_changes=min_changes, n_jobs=4)
+
+    Xtrain, Ytrain, Ytrain_full, Xtest, Ytest = msrc_load(n_full, n_train)
 
     start = time()
     clf.fit(Xtrain, Ytrain, initialize=initialize)
