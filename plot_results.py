@@ -76,9 +76,9 @@ def plot_msrc_full():
 
 
 def plot_heterogenous_per_iter(result):
-    scores = result.test_scores
-    deltas = result.delta_history
-    changes = result.changes
+    scores =  result.data['test_scores']
+    deltas =  result.data['delta_history']
+    changes = result.data['changes']
     x = np.arange(0, scores.size)
 
     pl.rc('text', usetex=True)
