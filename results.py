@@ -46,7 +46,6 @@ class ExperimentResult(object):
         # generated data like scores per iteration, model parameters
         # stored in hdf5 file
         self.data = data
-        return self.meta['id']
 
     def save(self):
         self.save_meta()
