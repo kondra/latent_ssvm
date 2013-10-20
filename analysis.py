@@ -1,4 +1,5 @@
 import numpy as np
+import pylab as pl
 
 from pystruct.learners import OneSlackSSVM
 from latent_structured_svm import LatentSSVM
@@ -6,7 +7,7 @@ from heterogenous_crf import HCRF
 
 from test_weak_labeled import msrc_load
 
-def msrc_train_score_per_iter(result, only_weak=False):
+def msrc_train_score_per_iter(result, only_weak=False, plot=True):
     w_history = result.data['w_history']
     meta_data = result.meta
     n_full = meta_data['n_full']
@@ -43,5 +44,16 @@ def msrc_train_score_per_iter(result, only_weak=False):
     train_scores = []
     for score in clf.staged_score(Xtrain, Ytrain_full):
         train_scores.append(score)
+
+    if plot:
+        x = np.arange(0, train_scores.size)
+        pl.rc('text', usetex=True)
+        pl.rc('font', family='serif')
+        pl.figure(figsize=(10,10), dpi=96)
+        pl.title('score on train set')
+        pl.plot(x, train_scores)
+        pl.scatter(x, train_scores)
+        pl.xlabel('iteration')
+        pl.xlim([-0.5, scores.size + 1])
 
     return np.array(train_scores)
