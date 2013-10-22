@@ -135,7 +135,7 @@ def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
     exp_data['delta_history'] = clf.delta_history_
     exp_data['primal_objective_curve'] = clf.primal_objective_curve_
     exp_data['objective_curve'] = clf.objective_curve_
-    exp_data['timestamps'] = clf.time_stamps_
+    exp_data['timestamps'] = clf.timestamps_
     exp_data['base_iter_hitory'] = clf.base_iter_history_
 
     meta_data = {}
@@ -221,7 +221,7 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
     exp_data['delta_history'] = clf.delta_history_
     exp_data['primal_objective_curve'] = clf.primal_objective_curve_
     exp_data['objective_curve'] = clf.objective_curve_
-    exp_data['timestamps'] = clf.time_stamps_
+    exp_data['timestamps'] = clf.timestamps_
     exp_data['base_iter_hitory'] = clf.base_iter_history_
 
     meta_data = {}
