@@ -79,6 +79,8 @@ def plot_heterogenous_per_iter(result):
     scores =  result.data['test_scores']
     deltas =  result.data['delta_history']
     changes = result.data['changes']
+    objective_curve = result.data['objective_curve']
+    primal_objective_curve = result.data['primal_objective_curve']
     x = np.arange(0, scores.size)
 
     pl.rc('text', usetex=True)
@@ -109,10 +111,10 @@ def plot_heterogenous_per_iter(result):
 
     pl.subplot(2, 2, 4)
     pl.title('objective')
-    pl.plot(x[1:], result.primal_objective_curve[1:-1], label='primal')
-    pl.scatter(x[1:], result.primal_objective_curve[1:-1])
-    pl.plot(x[1:], result.objective_curve[1:-1], c='r', label='cutting-plane')
-    pl.scatter(x[1:], result.objective_curve[1:-1], c='r')
+    pl.plot(x[1:], primal_objective_curve[1:-1], label='primal')
+    pl.scatter(x[1:], primal_objective_curve[1:-1])
+    pl.plot(x[1:], objective_curve[1:-1], c='r', label='cutting-plane')
+    pl.scatter(x[1:], objective_curve[1:-1], c='r')
     pl.xlabel('iteration')
     pl.legend(loc='upper right')
     pl.xlim([-0.5, scores.size + 1])
