@@ -191,8 +191,8 @@ class HCRF(StructuredModel):
             pairwise_cost = {}
             for i in xrange(0, edges.shape[0]):
                 cost = pairwise_potentials[i, 0, 0]
-                if cost >= 0:
-                    pairwise_cost[(edges[i, 0], edges[i, 1])] = cost
+#                if cost >= 0:
+                pairwise_cost[(edges[i, 0], edges[i, 1])] = cost
 
             from pygco import cut_from_graph_gen_potts
             shape_org = unary_potentials.shape[:-1]
