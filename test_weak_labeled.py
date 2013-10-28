@@ -97,11 +97,13 @@ def split_test_train(X, Y, n_full, n_train):
 
 def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
                   max_iter=500, inner_tol=0.001, outer_tol=0.01, min_changes=0,
-                  initialize=True, alpha=0.1, n_inference_iter=5):
+                  initialize=True, alpha=0.1, n_inference_iter=5,
+                  inactive_window=50, inactive_threshold=1e-5):
     crf = HCRF(n_states=10, n_features=10, n_edge_features=2, alpha=alpha,
                inference_method='gco')
     base_clf = OneSlackSSVM(crf, max_iter=max_iter, C=C, verbose=0,
-                            tol=inner_tol, n_jobs=4, inference_cache=100)
+                            tol=inner_tol, n_jobs=4, inference_cache=100,
+                            inactive_window=50, inactive_threshold=1e-5)
     clf = LatentSSVM(base_clf, latent_iter=latent_iter, verbose=2,
                      tol=outer_tol, min_changes=min_changes, n_jobs=4)
 
@@ -136,7 +138,10 @@ def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
     exp_data['primal_objective_curve'] = clf.primal_objective_curve_
     exp_data['objective_curve'] = clf.objective_curve_
     exp_data['timestamps'] = clf.timestamps_
+    exp_data['qp_timestamps'] = clf.qp_timestamps_
+    exp_data['inference_timestamps'] = clf.inference_timestamps_
     exp_data['base_iter_hitory'] = clf.base_iter_history_
+    exp_data['number_of_constraints'] = clf.number_of_constraints_
 
     meta_data = {}
     meta_data['dataset_name'] = 'syntetic'
@@ -158,6 +163,8 @@ def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
     meta_data['alpha'] = alpha
     meta_data['min_changes'] = min_changes
     meta_data['initialize'] = initialize
+    meta_data['inactive_window'] = inactive_window
+    meta_data['inactive_threshold'] = inactive_threshold
 
     return ExperimentResult(exp_data, meta_data)
 
@@ -186,11 +193,13 @@ def msrc_load(n_full, n_train):
 
 def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
               max_iter=500, inner_tol=0.001, outer_tol=0.01, min_changes=0,
-              initialize=True, alpha=0.1, n_inference_iter=5):
+              initialize=True, alpha=0.1, n_inference_iter=5,
+              inactive_window=50, inactive_threshold=1e-5):
     crf = HCRF(n_states=24, n_features=2028, n_edge_features=4, alpha=alpha,
                inference_method='gco', n_iter=n_inference_iter)
-    base_clf = OneSlackSSVM(crf, max_iter=max_iter, C=C, verbose=2,
-                            tol=inner_tol, n_jobs=4, inference_cache=10)
+    base_clf = OneSlackSSVM(crf, max_iter=max_iter, C=C, verbose=0,
+                            tol=inner_tol, n_jobs=4, inference_cache=10,
+                            inactive_window=50, inactive_threshold=1e-5)
     clf = LatentSSVM(base_clf, latent_iter=latent_iter, verbose=2,
                      tol=outer_tol, min_changes=min_changes, n_jobs=4)
 
@@ -222,7 +231,10 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
     exp_data['primal_objective_curve'] = clf.primal_objective_curve_
     exp_data['objective_curve'] = clf.objective_curve_
     exp_data['timestamps'] = clf.timestamps_
+    exp_data['qp_timestamps'] = clf.qp_timestamps_
+    exp_data['inference_timestamps'] = clf.inference_timestamps_
     exp_data['base_iter_hitory'] = clf.base_iter_history_
+    exp_data['number_of_constraints'] = clf.number_of_constraints_
 
     meta_data = {}
     meta_data['dataset_name'] = 'msrc'
@@ -243,5 +255,7 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
     meta_data['alpha'] = alpha
     meta_data['min_changes'] = min_changes
     meta_data['initialize'] = initialize
+    meta_data['inactive_window'] = inactive_window
+    meta_data['inactive_threshold'] = inactive_threshold
 
     return ExperimentResult(exp_data, meta_data)
