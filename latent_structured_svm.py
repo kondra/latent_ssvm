@@ -71,6 +71,9 @@ class LatentSSVM(BaseSSVM):
         self.changes_ = []
         start_time = time()
         self.timestamps_ = [0.0]
+        self.qp_timestamps_ = []
+        self.inference_timestamps_ = []
+        self.number_of_constraints_ = []
         self.objective_curve_ = []
         self.primal_objective_curve_ = []
 
@@ -124,6 +127,9 @@ class LatentSSVM(BaseSSVM):
                 self.changes_.append(np.sum(changes))
     
                 Y = Y_new
+                #if iteration > 1:
+                #    self.base_ssvm.fit(X, Y, initialize=False, warm_start='soft')
+                #else:
                 self.base_ssvm.fit(X, Y, initialize=False)
 
                 w = self.base_ssvm.w
@@ -135,6 +141,9 @@ class LatentSSVM(BaseSSVM):
                 self.delta_history_.append(delta)
                 gap = self.primal_objective_curve_[-1] - self.objective_curve_[-1]
                 self.timestamps_.append(time() - start_time)
+                self.qp_timestamps_.append(self.base_ssvm.qp_time)
+                self.inference_timestamps_.append(self.base_ssvm.inference_time)
+                self.number_of_constraints_.append(len(self.base_ssvm.constraints_))
                 if self.verbose:
                     print("|w-w_prev|: %f" % delta)
                     print("Final primal objective: %f" % self.primal_objective_curve_[-1])
@@ -142,6 +151,10 @@ class LatentSSVM(BaseSSVM):
                     print("Duality gap: %f" % gap)
                     print("Finished in %d iterations" % self.base_iter_history_[-1])
                     print("Time elapsed: %f s" % (self.timestamps_[-1] - self.timestamps_[-2]))
+                    print("Time spent by QP: %f s" % self.base_ssvm.qp_time)
+                    print("Time spent by inference: %f s" % self.base_ssvm.inference_time)
+                    print("Number of constraints: %d" % self.number_of_constraints_[-1])
+                    print("----------------------------------------")
                 if delta < self.tol:
                     if self.verbose:
                         print("weight vector did not change a lot, break")
