@@ -54,7 +54,7 @@ class HCRF(StructuredModel):
         # forbid h that is incompoatible with y
         # by modifying unary params
         other_states = list(self.all_states - set(y.weak))
-        unary_potentials[:, other_states] = -10
+        unary_potentials[:, other_states] = -1000
         pairwise_potentials = self._get_pairwise_potentials(x, w)
         edges = self._get_edges(x)
         h = inference_dispatch(unary_potentials, pairwise_potentials, edges,
