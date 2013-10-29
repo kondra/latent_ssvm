@@ -59,7 +59,7 @@ class HCRF(StructuredModel):
         edges = self._get_edges(x)
         h = inference_dispatch(unary_potentials, pairwise_potentials, edges,
                                self.inference_method, relaxed=False, n_iter=self.n_iter)
-        return Label(h, None, y.weights, False)
+        return Label(h, y.weak, y.weights, False)
 
     def _get_pairwise_potentials(self, x, w):
         """Computes pairwise potentials for x and w.
