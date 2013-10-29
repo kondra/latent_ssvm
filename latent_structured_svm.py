@@ -114,7 +114,7 @@ class LatentSSVM(BaseSSVM):
         print("Final cutting-plane objective: %f" % self.objective_curve_[-1])
         print("Duality gap: %f" % gap)
         print("Finished in %d iterations" % self.base_iter_history_[-1])
-        print("Time elapsed: %f s" % stop_t - start_t)
+        print("Time elapsed: %f s" % (stop_t - start_t))
         print("Time spent by QP: %f s" % self.base_ssvm.qp_time)
         print("Time spent by inference: %f s" % self.base_ssvm.inference_time)
         print("Number of constraints: %d" % self.number_of_constraints_[-1])
