@@ -100,12 +100,25 @@ class LatentSSVM(BaseSSVM):
             # we have some fully labeled examples, others are somehow initialized
             X1, Y1 = X, Y
 
+        start_t = time()
         self.base_ssvm.fit(X1, Y1)
+        stop_t = time()
         w = self.base_ssvm.w
         self.w_history_.append(w)
         self.objective_curve_.append(self.base_ssvm.objective_curve_[-1])
         self.primal_objective_curve_.append(self.base_ssvm.primal_objective_curve_[-1])
         self.base_iter_history_.append(len(self.base_ssvm.primal_objective_curve_))
+        gap = self.primal_objective_curve_[-1] - self.objective_curve_[-1]
+
+        print("Final primal objective: %f" % self.primal_objective_curve_[-1])
+        print("Final cutting-plane objective: %f" % self.objective_curve_[-1])
+        print("Duality gap: %f" % gap)
+        print("Finished in %d iterations" % self.base_iter_history_[-1])
+        print("Time elapsed: %f s" % stop_t - start_t)
+        print("Time spent by QP: %f s" % self.base_ssvm.qp_time)
+        print("Time spent by inference: %f s" % self.base_ssvm.inference_time)
+        print("Number of constraints: %d" % self.number_of_constraints_[-1])
+        print("----------------------------------------")
 
         try:
             for iteration in xrange(self.latent_iter):
