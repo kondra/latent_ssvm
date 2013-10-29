@@ -125,7 +125,7 @@ class LatentSSVM(BaseSSVM):
                 if self.verbose:
                     print("LATENT SVM ITERATION %d" % iteration)
                 # complete latent variables
-                Y_new = Parallel(n_jobs=self.n_jobs, verbose=0)(
+                Y_new = Parallel(n_jobs=self.n_jobs, verbose=0, max_nbytes=1e8)(
                     delayed(latent)(self.model, x, y, w) for x, y in zip(X, Y))
     
                 changes = [np.any(y_new.full != y.full) for y_new, y in zip(Y_new, Y)]
