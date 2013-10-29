@@ -8,7 +8,7 @@ import numpy as np
 from time import time
 
 from pystruct.learners.ssvm import BaseSSVM
-from sklearn.externals.joblib import Parallel, delayed
+from joblib import Parallel, delayed
 
 from common import latent
 
