@@ -109,6 +109,7 @@ class LatentSSVM(BaseSSVM):
         self.primal_objective_curve_.append(self.base_ssvm.primal_objective_curve_[-1])
         self.base_iter_history_.append(len(self.base_ssvm.primal_objective_curve_))
         gap = self.primal_objective_curve_[-1] - self.objective_curve_[-1]
+        self.number_of_constraints_.append(len(self.base_ssvm.constraints_))
 
         print("Final primal objective: %f" % self.primal_objective_curve_[-1])
         print("Final cutting-plane objective: %f" % self.objective_curve_[-1])
