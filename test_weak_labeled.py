@@ -141,8 +141,9 @@ def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
     exp_data['timestamps'] = clf.timestamps_
     exp_data['qp_timestamps'] = clf.qp_timestamps_
     exp_data['inference_timestamps'] = clf.inference_timestamps_
-    exp_data['base_iter_hitory'] = clf.base_iter_history_
+    exp_data['number_of_iterations'] = clf.number_of_iterations_
     exp_data['number_of_constraints'] = clf.number_of_constraints_
+    exp_data['calls_to_inference'] = clf.calls_to_inference_
 
     meta_data = {}
     meta_data['dataset_name'] = 'syntetic'
@@ -235,8 +236,9 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
     exp_data['timestamps'] = clf.timestamps_
     exp_data['qp_timestamps'] = clf.qp_timestamps_
     exp_data['inference_timestamps'] = clf.inference_timestamps_
-    exp_data['base_iter_hitory'] = clf.base_iter_history_
+    exp_data['number_of_iterations'] = clf.number_of_iterations_
     exp_data['number_of_constraints'] = clf.number_of_constraints_
+    exp_data['calls_to_inference'] = clf.calls_to_inference_
 
     meta_data = {}
     meta_data['dataset_name'] = 'msrc'

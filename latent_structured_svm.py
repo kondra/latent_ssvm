@@ -67,7 +67,7 @@ class LatentSSVM(BaseSSVM):
         constraints = None
         self.w_history_ = []
         self.delta_history_ = []
-        self.base_iter_history_ = []
+        self.number_of_iterations_ = []
         self.changes_ = []
         start_time = time()
         self.timestamps_ = [0.0]
@@ -76,6 +76,7 @@ class LatentSSVM(BaseSSVM):
         self.number_of_constraints_ = []
         self.objective_curve_ = []
         self.primal_objective_curve_ = []
+        self.calls_to_inference_ = []
 
         # all data is fully labeled, quit
         if np.all([y.full_labeled for y in Y]):
@@ -86,7 +87,7 @@ class LatentSSVM(BaseSSVM):
             self.timestamps_ = np.array([time() - start_time])
             self.primal_objective_curve_ = np.array([self.base_ssvm.primal_objective_curve_[-1]])
             self.objective_curve_ = np.array([self.base_ssvm.objective_curve_[-1]])
-            self.base_iter_history_ = np.array([len(self.base_ssvm.primal_objective_curve_)])
+            self.number_of_iterations_ = np.array([len(self.base_ssvm.primal_objective_curve_)])
             self.iter_done = 1
             return
 
@@ -106,15 +107,17 @@ class LatentSSVM(BaseSSVM):
         w = self.base_ssvm.w
         self.w_history_.append(w)
         self.objective_curve_.append(self.base_ssvm.objective_curve_[-1])
+        self.calls_to_inference.append(self.model.calls_to_inference)
+        self.model.calls_to_inference = 0
         self.primal_objective_curve_.append(self.base_ssvm.primal_objective_curve_[-1])
-        self.base_iter_history_.append(len(self.base_ssvm.primal_objective_curve_))
+        self.number_of_iterations_.append(len(self.base_ssvm.primal_objective_curve_))
         gap = self.primal_objective_curve_[-1] - self.objective_curve_[-1]
         self.number_of_constraints_.append(len(self.base_ssvm.constraints_))
 
         print("Final primal objective: %f" % self.primal_objective_curve_[-1])
         print("Final cutting-plane objective: %f" % self.objective_curve_[-1])
         print("Duality gap: %f" % gap)
-        print("Finished in %d iterations" % self.base_iter_history_[-1])
+        print("Finished in %d iterations" % self.number_of_iterations_[-1])
         print("Time elapsed: %f s" % (stop_t - start_t))
         print("Time spent by QP: %f s" % self.base_ssvm.qp_time)
         print("Time spent by inference: %f s" % self.base_ssvm.inference_time)
@@ -149,7 +152,7 @@ class LatentSSVM(BaseSSVM):
                 w = self.base_ssvm.w
                 self.objective_curve_.append(self.base_ssvm.objective_curve_[-1])
                 self.primal_objective_curve_.append(self.base_ssvm.primal_objective_curve_[-1])
-                self.base_iter_history_.append(len(self.base_ssvm.primal_objective_curve_))
+                self.number_of_iterations_.append(len(self.base_ssvm.primal_objective_curve_))
                 self.w_history_.append(w)
                 delta = np.linalg.norm(self.w_history_[-1] - self.w_history_[-2])
                 self.delta_history_.append(delta)
@@ -158,12 +161,14 @@ class LatentSSVM(BaseSSVM):
                 self.qp_timestamps_.append(self.base_ssvm.qp_time)
                 self.inference_timestamps_.append(self.base_ssvm.inference_time)
                 self.number_of_constraints_.append(len(self.base_ssvm.constraints_))
+                self.calls_to_inference.append(self.model.calls_to_inference)
+                self.model.calls_to_inference = 0
                 if self.verbose:
                     print("|w-w_prev|: %f" % delta)
                     print("Final primal objective: %f" % self.primal_objective_curve_[-1])
                     print("Final cutting-plane objective: %f" % self.objective_curve_[-1])
                     print("Duality gap: %f" % gap)
-                    print("Finished in %d iterations" % self.base_iter_history_[-1])
+                    print("Finished in %d iterations" % self.number_of_iterations_[-1])
                     print("Time elapsed: %f s" % (self.timestamps_[-1] - self.timestamps_[-2]))
                     print("Time spent by QP: %f s" % self.base_ssvm.qp_time)
                     print("Time spent by inference: %f s" % self.base_ssvm.inference_time)
@@ -180,9 +185,13 @@ class LatentSSVM(BaseSSVM):
         self.delta_history_ = np.array(self.delta_history_)
         self.changes_ = np.array(self.changes_)
         self.timestamps_ = np.array(self.timestamps_)
+        self.qp_timestamps_ = np.array(self.qp_timestamps_)
+        self.inference_timestamps_ = np.array(self.inference_timestamps_)
         self.primal_objective_curve_ = np.array(self.primal_objective_curve_)
         self.objective_curve_ = np.array(self.objective_curve_)
-        self.base_iter_history_ = np.array(self.base_iter_history_)
+        self.number_of_iterations_ = np.array(self.number_of_iterations_)
+        self.number_of_constraints_ = np.array(self.number_of_constraints_)
+        self.calls_to_inference_ = np.array(self.calls_to_inference_)
         self.iter_done = iteration + 1
 
     def _predict_from_iter(self, X, i):
