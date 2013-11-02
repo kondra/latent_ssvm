@@ -13,26 +13,6 @@ path_to_repo = '~/Documents/Thesis/latent_ssvm'
 path_to_datafile = '/home/dmitry/Documents/Thesis/latent_ssvm/notebooks/experiment_data.hdf5'
 
 
-def save(result, name, comment):
-    result.name = name
-    result.comment = comment
-    result.save_meta()
-    result.save_data()
-    return result.id
-
-
-def load(exp_id):
-    client = MongoClient()
-    meta = client['lSSVM']['base'].find_one({'id' : exp_id})
-    f = h5py.File(path_to_datafile, 'r', libver='latest')
-    grp = f[meta[u'dataset_name']][exp_id]
-    data = {}
-    for k in grp.keys():
-        data[k] = np.empty(grp[k].shape)
-        grp[k].read_direct(data[k])
-    return ExperimentResult(data, meta, is_new=False)
-
-
 class ExperimentResult(object):
     def __init__(self, data, meta, is_new=True):
         # meta information, comments, parameters
@@ -65,21 +45,33 @@ class ExperimentResult(object):
         client['lSSVM']['base'].insert(self.meta)
         client.disconnect()
 
+    @staticmethod
+    def save(result, description):
+        result.description = description
+        result.save_meta()
+        result.save_data()
+        return result.id
+
+    @staticmethod
+    def load(exp_id):
+        client = MongoClient()
+        meta = client['lSSVM']['base'].find_one({'id' : exp_id})
+        f = h5py.File(path_to_datafile, 'r', libver='latest')
+        grp = f[meta[u'dataset_name']][exp_id]
+        data = {}
+        for k in grp.keys():
+            data[k] = np.empty(grp[k].shape)
+            grp[k].read_direct(data[k])
+        f.close()
+        return ExperimentResult(data, meta, is_new=False)
+
     @property
-    def name(self):
-        return self.meta['name']
+    def description(self):
+        return self.meta['description']
 
-    @name.setter
-    def name(self, name_):
-        self.meta['name'] = name_
-
-    @property
-    def comment(self):
-        return self.meta['comment']
-
-    @comment.setter
-    def comment(self, comment_):
-        self.meta['comment'] = comment_
+    @description.setter
+    def description(self, description_):
+        self.meta['description'] = description_
 
     @property
     def id(self):
