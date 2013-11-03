@@ -107,8 +107,8 @@ class LatentSSVM(BaseSSVM):
         w = self.base_ssvm.w
         self.w_history_.append(w)
         self.objective_curve_.append(self.base_ssvm.objective_curve_[-1])
-        self.calls_to_inference_.append(self.model.inference_calls)
-        self.model.inference_calls = 0
+        self.calls_to_inference_.append(self.base_ssvm.model.inference_calls)
+        self.base_ssvm.model.inference_calls = 0
         self.primal_objective_curve_.append(self.base_ssvm.primal_objective_curve_[-1])
         self.number_of_iterations_.append(len(self.base_ssvm.primal_objective_curve_))
         gap = self.primal_objective_curve_[-1] - self.objective_curve_[-1]
@@ -161,8 +161,8 @@ class LatentSSVM(BaseSSVM):
                 self.qp_timestamps_.append(self.base_ssvm.qp_time)
                 self.inference_timestamps_.append(self.base_ssvm.inference_time)
                 self.number_of_constraints_.append(len(self.base_ssvm.constraints_))
-                self.calls_to_inference_.append(self.model.inference_calls)
-                self.model.inference_calls= 0
+                self.calls_to_inference_.append(self.base_ssvm.model.inference_calls)
+                self.base_ssvm.model.inference_calls= 0
                 if self.verbose:
                     print("|w-w_prev|: %f" % delta)
                     print("Final primal objective: %f" % self.primal_objective_curve_[-1])
