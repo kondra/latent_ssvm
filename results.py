@@ -13,6 +13,20 @@ path_to_repo = '~/Documents/Thesis/latent_ssvm'
 path_to_datafile = '/home/dmitry/Documents/Thesis/latent_ssvm/notebooks/experiment_data.hdf5'
 
 
+class experiment(object):
+    def __init__(self, f):
+        self.f = f
+
+    def __call__(self, description, *args, **kwargs):
+        result = None
+        try:
+            result = self.f(*args, **kwargs)
+        except:
+            raise
+        result.save(description)
+        return result
+
+
 class ExperimentResult(object):
     def __init__(self, data, meta, is_new=True):
         # meta information, comments, parameters
@@ -27,11 +41,6 @@ class ExperimentResult(object):
         # stored in hdf5 file
         self.data = data
 
-    def save(self):
-        self.save_meta()
-        self.save_data()
-        return self.id
-
     def save_data(self):
         f = h5py.File(path_to_datafile, 'a', libver='latest')
         grp = f[self.meta['dataset_name']].create_group(self.meta['id'])
@@ -45,12 +54,11 @@ class ExperimentResult(object):
         client['lSSVM']['base'].insert(self.meta)
         client.disconnect()
 
-    @staticmethod
-    def save(result, description):
-        result.description = description
-        result.save_meta()
-        result.save_data()
-        return result.id
+    def save(self, description=''):
+        self.description = description
+        self.save_meta()
+        self.save_data()
+        return self.id
 
     @staticmethod
     def load(exp_id):
