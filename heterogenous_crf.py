@@ -8,6 +8,8 @@ from pystruct.models.base import StructuredModel
 from pystruct.inference.inference_methods import inference_dispatch
 from pystruct.models.utils import loss_augment_weighted_unaries
 
+from sklearn.utils.extmath import safe_sparse_dot
+
 from label import Label
 
 
@@ -109,7 +111,7 @@ class HCRF(StructuredModel):
         features, edges = self._get_features(x), self._get_edges(x)
         unary_params = w[:self.n_states * self.n_features].reshape(
             self.n_states, self.n_features)
-        result = np.dot(features, unary_params.T)
+        result = safe_sparse_dot(features, unary_params.T, dense_output=True)
         return result
 
     def psi(self, x, y):
@@ -130,7 +132,7 @@ class HCRF(StructuredModel):
 
         pw = np.sum(edge_features[y[edges[:, 0]] == y[edges[:, 1]]], axis=0)
 
-        unaries_acc = np.dot(unary_marginals.T, features)
+        unaries_acc = safe_sparse_dot(unary_marginals.T, features, dense_output=True)
 
         psi_vector = np.hstack([unaries_acc.ravel(), pw.ravel()])
         if not full_labeled:
