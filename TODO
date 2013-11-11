@@ -3,5 +3,13 @@
 * DONE: add stopping criterion
 * add more complex loss functions in models
 * partially DONE: review models code
-* write docstring for LatentSSVM class
-* add support for sparse features
+* partially DONE: write docstring for LatentSSVM class
+* DONE: add support for sparse features
+* profile code
+* remove dependency from inference dispatch
+* implement smart loader for MSRC dataset, store data in hdf5
+* add support for task scheduling (using celery or redis queue)
+* implement smart logging mechanism, possibly with backend in db
+* add visualizer
+* add average-precision metric
+* add function to compute per-class accuracy statistic
