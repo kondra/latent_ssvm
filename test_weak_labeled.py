@@ -1,6 +1,7 @@
 import numpy as np
 
-from pystruct.learners import OneSlackSSVM
+#from pystruct.learners import OneSlackSSVM
+from one_slack_ssvm import OneSlackSSVM
 from time import time
 
 from latent_crf import LatentCRF
@@ -139,20 +140,9 @@ def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
     for score in clf.staged_score(x_train, y_train_full):
         train_scores.append(score)
 
-    exp_data = {}
+    exp_data = clf._get_data()
     exp_data['test_scores'] = np.array(test_scores)
     exp_data['train_scores'] = np.array(train_scores)
-    exp_data['changes'] = clf.changes_
-    exp_data['w_history'] = clf.w_history_
-    exp_data['delta_history'] = clf.delta_history_
-    exp_data['primal_objective_curve'] = clf.primal_objective_curve_
-    exp_data['objective_curve'] = clf.objective_curve_
-    exp_data['timestamps'] = clf.timestamps_
-    exp_data['qp_timestamps'] = clf.qp_timestamps_
-    exp_data['inference_timestamps'] = clf.inference_timestamps_
-    exp_data['number_of_iterations'] = clf.number_of_iterations_
-    exp_data['number_of_constraints'] = clf.number_of_constraints_
-    exp_data['calls_to_inference'] = clf.calls_to_inference_
 
     meta_data['dataset_name'] = 'syntetic'
     meta_data['annotation_type'] = 'image-level labelling'
@@ -226,20 +216,9 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
     for score in clf.staged_score(Xtrain, Ytrain_full):
         train_scores.append(score)
 
-    exp_data = {}
+    exp_data = clf._get_data()
     exp_data['test_scores'] = np.array(test_scores)
     exp_data['train_scores'] = np.array(train_scores)
-    exp_data['changes'] = clf.changes_
-    exp_data['w_history'] = clf.w_history_
-    exp_data['delta_history'] = clf.delta_history_
-    exp_data['primal_objective_curve'] = clf.primal_objective_curve_
-    exp_data['objective_curve'] = clf.objective_curve_
-    exp_data['timestamps'] = clf.timestamps_
-    exp_data['qp_timestamps'] = clf.qp_timestamps_
-    exp_data['inference_timestamps'] = clf.inference_timestamps_
-    exp_data['number_of_iterations'] = clf.number_of_iterations_
-    exp_data['number_of_constraints'] = clf.number_of_constraints_
-    exp_data['calls_to_inference'] = clf.calls_to_inference_
 
     meta_data['dataset_name'] = 'msrc'
     meta_data['annotation_type'] = 'image-level labelling'
