@@ -241,7 +241,6 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
     exp_data['number_of_constraints'] = clf.number_of_constraints_
     exp_data['calls_to_inference'] = clf.calls_to_inference_
 
-    meta_data = {}
     meta_data['dataset_name'] = 'msrc'
     meta_data['annotation_type'] = 'image-level labelling'
     meta_data['label_type'] = 'full+weak'
