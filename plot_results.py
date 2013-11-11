@@ -77,6 +77,7 @@ def plot_msrc_full():
 
 def plot_heterogenous_per_iter(result):
     scores =  result.data['test_scores']
+    train_scores =  result.data['train_scores']
     deltas =  result.data['delta_history']
     changes = result.data['changes']
     objective_curve = result.data['objective_curve']
@@ -89,25 +90,28 @@ def plot_heterogenous_per_iter(result):
     pl.figure(figsize=(10,10), dpi=96)
 
     pl.subplot(2, 2, 1)
-    pl.title('score on test set')
-    pl.plot(x, scores)
+    pl.title('score')
+    pl.plot(x, scores, label='test')
+    pl.plot(x, train_scores, c='r', label='train')
     pl.scatter(x, scores)
+    pl.scatter(x, train_scores, c='r')
     pl.xlabel('iteration')
-    pl.xlim([-0.5, scores.size + 1])
+    pl.xlim([-1, scores.size + 1])
+    pl.legend(loc='upper right')
 
     pl.subplot(2, 2, 2)
     pl.title(r"\|w-w_{prev}\|_2")
     pl.plot(x, deltas)
     pl.scatter(x, deltas)
     pl.xlabel('iteration')
-    pl.xlim([-0.5, scores.size + 1])
+    pl.xlim([-1, scores.size + 1])
 
     pl.subplot(2, 2, 3)
     pl.title('changes in inferred latent labelling')
     pl.plot(x, changes)
     pl.scatter(x, changes)
     pl.xlabel('iteration')
-    pl.xlim([-0.5, scores.size + 1])
+    pl.xlim([-1, scores.size + 1])
 
     pl.subplot(2, 2, 4)
     pl.title('objective')
@@ -117,4 +121,4 @@ def plot_heterogenous_per_iter(result):
     pl.scatter(x[1:], objective_curve[1:-1], c='r')
     pl.xlabel('iteration')
     pl.legend(loc='upper right')
-    pl.xlim([-0.5, scores.size + 1])
+    pl.xlim([-1, scores.size + 1])
