@@ -13,7 +13,7 @@ import cvxopt.solvers
 
 from joblib import Parallel, delayed
 
-from pystruct.learners import BaseSSVM
+from pystruct.learners.ssvm import BaseSSVM
 from pystruct.utils import loss_augmented_inference
 
 
