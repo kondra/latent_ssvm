@@ -26,9 +26,9 @@ def load_msrc(dataset):
 
 def load_msrc_weak_train_mask(filename, n):
     f = h5py.File(filename, 'r', libver='latest')
-    ds = f['features']['train_mask_%d' % n]
-    mask = np.empty(ds.shape, dtype=np.int32)
-    ds.read_direct(mask)
+    name = 'train_mask_%d' % n
+    mask = np.empty(f[name].shape, dtype=np.int32)
+    f[name].read_direct(mask)
     f.close()
     return mask
 
@@ -37,36 +37,34 @@ def load_msrc_hdf(filename):
     f = h5py.File(filename, 'r', libver='latest')
     g_u = f['features']['unaries']
     data = np.empty(g_u['data'].shape, dtype=np.float32)
-    indices = np.empty(g_u['indices'].shape, dtype=np.float32)
-    indptr = np.empty(g_u['indptr'].shape, dtype=np.float32)
+    indices = np.empty(g_u['indices'].shape, dtype=np.int32)
+    indptr = np.empty(g_u['indptr'].shape, dtype=np.int32)
     g_u['data'].read_direct(data)
     g_u['indices'].read_direct(indices)
     g_u['indptr'].read_direct(indptr)
     width = g_u.attrs['width']
     height = g_u.attrs['height']
-    raw_unaries = sps.csr((data, indices, indptr), shape=(height, width))
+    raw_unaries = sps.csr_matrix((data, indices, indptr), shape=(height, width))
     del data
     del indices
     del indptr
 
+    g_f = f['features']
     raw_labels = np.empty(g_f['labels'].shape, dtype=np.int32)
     g_f['labels'].read_direct(raw_labels)
     raw_areas = np.empty(g_f['areas'].shape, dtype=np.int32)
     g_f['areas'].read_direct(raw_areas)
 
-    raw_labels_all = np.hstack(raw_labels, raw_areas)
+    raw_labels_all = np.vstack((raw_labels, raw_areas)).T
 
-    g_f = f['features']
     spnum = np.empty(g_f['spnum'].shape, dtype=np.int32)
     g_f['spnum'].read_direct(spnum)
     unaries = []
-#    areas = []
     labels = []
     pos = 0
     for n in spnum:
         unaries.append(raw_unaries[pos:pos+n, :])
-#        areas.append(raw_areas[pos:pos+n])
-        labels.append(raw_labels[pos:pos+n, :])
+        labels.append(raw_labels_all[pos:pos+n, :])
         pos += n
     del raw_unaries
     del raw_labels
@@ -87,6 +85,7 @@ def load_msrc_hdf(filename):
     for n in edges_num:
         edges.append(raw_edges[pos:pos+n, :])
         pairwise.append(raw_pairwise[pos:pos+n, :])
+        pos += n
     del raw_edges
     del raw_pairwise
 
