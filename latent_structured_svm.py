@@ -210,8 +210,8 @@ class LatentSSVM(BaseSSVM):
         data['w_history'] = self.w_history_
         data['number_of_iterations'] = self.number_of_iterations_
         data['timestamps'] = self.timestamps_
-        data['qp_timestamps'] = self.qp_timestamps_
-        data['inference_timestamps'] = self.inference_timestamps_
+        data['qp_timestamps'] = self.qp_time_
+        data['inference_timestamps'] = self.inference_time_
         data['number_of_constraints'] = self.number_of_constraints_
         data['primal_objective_curve'] = self.primal_objective_curve_
         data['objective_curve'] = self.objective_curve_
@@ -223,8 +223,8 @@ class LatentSSVM(BaseSSVM):
         self.w_history_ = list(data['w_history'])
         self.number_of_iterations_  = list(data['number_of_iterations'])
         self.timestamps_ = list(data['timestamps'])
-        self.qp_timestamps_ = list(data['qp_timestamps'])
-        self.inference_timestamps_ = list(data['inference_timestamps'])
+        self.qp_time_ = list(data['qp_timestamps'])
+        self.inference_time_ = list(data['inference_timestamps'])
         self.number_of_constraints_ = list(data['number_of_constraints'])
         self.primal_objective_curve_ = list(data['primal_objective_curve'])
         self.objective_curve_ = list(data['objective_curve'])

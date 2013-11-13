@@ -9,11 +9,14 @@ from latent_structured_svm import LatentSSVM
 from heterogenous_crf import HCRF
 
 from data_loader import load_syntetic
-from data_loader import load_msrc
+from data_loader import load_msrc_hdf
+from data_loader import load_msrc_weak_train_mask
 from common import compute_error
 from common import weak_from_hidden
 from label import Label
 from results import ExperimentResult, experiment
+
+MSRC_DATA_PATH = '../data/msrc/msrc.hdf5'
 
 # testing with weakly labeled train set
 
@@ -155,13 +158,11 @@ def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
 
 
 def msrc_load(n_full, n_train):
-    Xtest, Ytest = load_msrc('test')
+    Xtrain, Ytrain_raw, Xtest, Ytest = load_msrc_hdf(MSRC_DATA_PATH)
     Ytest = [Label(y[:, 0].astype(np.int32), None, y[:, 1], True)
              for y in Ytest]
 
-    train_mask = np.genfromtxt('../data/msrc/trainmasks/trainMaskX%d.txt' % n_full)
-    train_mask = train_mask[0:n_train].astype(np.bool)
-    Xtrain, Ytrain_raw = load_msrc('train')
+    train_mask = load_msrc_weak_train_mask(MSRC_DATA_PATH, n_full)[:n_train]
     Ytrain_full = [Label(y[:, 0].astype(np.int32), None, y[:, 1], True)
                    for y in Ytrain_raw]
     Ytrain = []
