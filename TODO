@@ -7,9 +7,11 @@
 * DONE: add support for sparse features
 * profile code
 * remove dependency from inference dispatch
-* implement smart loader for MSRC dataset, store data in hdf5
+* DONE: implement smart loader for MSRC dataset, store data in hdf5
 * add support for task scheduling (using celery or redis queue)
 * implement smart logging mechanism, possibly with backend in db
 * add visualizer
 * add average-precision metric
 * add function to compute per-class accuracy statistic
+* store syntetic data in hdf5
+* save w in inner ssvm loop
