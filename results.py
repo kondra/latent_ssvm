@@ -7,6 +7,8 @@ import h5py
 
 from git import Repo
 from pymongo import MongoClient
+from datetime import datetime
+from time import time
 
 
 path_to_repo = '~/Documents/Thesis/latent_ssvm'
@@ -37,6 +39,8 @@ class ExperimentResult(object):
             self.meta['commit_hash'] = repo.head.commit.hexsha
             # unique experiment identifier
             self.meta['id'] = uuid.uuid1().hex
+            self.meta['now'] = datetime.now().ctime()
+            self.meta['timestamp'] = time()
         # generated data like scores per iteration, model parameters
         # stored in hdf5 file
         self.data = data
