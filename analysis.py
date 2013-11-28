@@ -1,7 +1,8 @@
 import numpy as np
-import pylab as pl
+#import pylab as pl
 
-from pystruct.learners import OneSlackSSVM
+#from pystruct.learners import OneSlackSSVM
+from one_slack_ssvm import OneSlackSSVM
 from latent_structured_svm import LatentSSVM
 from heterogenous_crf import HCRF
 
@@ -15,8 +16,6 @@ def msrc_train_score_per_iter(result, only_weak=False, plot=True):
     n_full = meta_data['n_full']
     n_train = meta_data['n_train']
     n_inference_iter = meta_data['n_inference_iter']
-    n_full = meta_data['n_full']
-    n_train = meta_data['n_train']
     C = meta_data['C']
     latent_iter = meta_data['latent_iter']
     max_iter = meta_data['max_iter']
@@ -67,8 +66,6 @@ def syntetic_train_score_per_iter(result, only_weak=False, plot=True):
     n_full = meta_data['n_full']
     n_train = meta_data['n_train']
     n_inference_iter = meta_data['n_inference_iter']
-    n_full = meta_data['n_full']
-    n_train = meta_data['n_train']
     dataset = meta_data['dataset']
     C = meta_data['C']
     latent_iter = meta_data['latent_iter']
@@ -116,3 +113,87 @@ def syntetic_train_score_per_iter(result, only_weak=False, plot=True):
         pl.xlim([-0.5, train_scores.size + 1])
 
     return train_scores
+
+from pymongo import MongoClient
+
+def get_all_from_mongo(dataset):
+    cl = MongoClient()
+    cl = cl['lSSVM']['base']
+    exps = []
+    for meta in cl.find():
+        exps.append(meta)
+
+def create_model(result):
+    meta = result.meta
+
+    alpha = meta['alpha']
+    n_inference_iter = meta['n_inference_iter']
+    max_iter = meta['max_iter']
+    C = meta['C']
+    inner_tol = meta['inner_tol']
+    inactive_window = meta['inactive_window']
+    inactive_threshold = meta['inactive_threshold']
+    latent_iter = meta['latent_iter']
+    outer_tol = meta['outer_tol']
+    min_changes = meta['min_changes']
+
+    try:
+        inference_cache = meta['inference_cache']
+    except:
+        inference_cache = 0
+
+    crf = None
+    if meta['dataset_name'] == 'syntetic':
+        crf = HCRF(n_states=10, n_features=10, n_edge_features=2, alpha=alpha,
+                   inference_method='gco', n_iter=n_inference_iter)
+    elif meta['dataset_name'] == 'msrc':
+        crf = HCRF(n_states=24, n_features=2028, n_edge_features=4, alpha=alpha,
+                   inference_method='gco', n_iter=n_inference_iter)
+
+    base_clf = OneSlackSSVM(crf, max_iter=max_iter, C=C, verbose=0,
+                            tol=inner_tol, n_jobs=4, inference_cache=inference_cache,
+                            inactive_window=inactive_window,
+                            inactive_threshold=inactive_threshold)
+    clf = LatentSSVM(base_clf, latent_iter=latent_iter, verbose=2,
+                     tol=outer_tol, min_changes=min_changes, n_jobs=4)
+
+    return clf
+
+def syntetic_train_score_comp(result):
+    clf = create_model(result)
+
+    dataset = result.meta['dataset']
+    n_train = result.meta['n_train']
+    n_full = result.meta['n_full']
+
+    X, Y = load_syntetic(dataset)
+
+    Xtrain, Ytrain, Ytrain_full, Xtest, Ytest = \
+        split_test_train(X, Y, n_full, n_train)
+
+    train_scores = []
+    test_scores = []
+    for i in xrange(result.data['inner_w'].shape[0]):
+        clf.w = result.data['inner_w'][i,:]
+        train_scores.append(clf.score(Xtrain, Ytrain_full))
+        test_scores.append(clf.score(Xtest, Ytest))
+
+    return test_scores, train_scores
+
+def msrc_train_score_comp(result):
+    clf = create_model(result)
+
+    n_train = result.meta['n_train']
+    n_full = result.meta['n_full']
+
+    Xtrain, Ytrain, Ytrain_full, Xtest, Ytest = msrc_load(n_full, n_train)
+
+    train_scores = []
+    test_scores = []
+    for i in xrange(result.data['inner_w'].shape[0]):
+        print('%d of %d' % (i, result.data['inner_w'].shape[0]))
+        clf.w = result.data['inner_w'][i,:]
+        train_scores.append(clf.score(Xtrain, Ytrain_full))
+        test_scores.append(clf.score(Xtest, Ytest))
+
+    return test_scores, train_scores
