@@ -81,6 +81,11 @@ class LatentSSVM(BaseSSVM):
             self.objective_curve_ = []
             self.primal_objective_curve_ = []
 
+            self.inner_w = []
+            self.inner_sz = []
+            self.inner_objective = []
+            self.inner_primal = []
+
             # all data is fully labeled, quit
             if np.all([y.full_labeled for y in Y]):
                 self.base_ssvm.fit(X, Y)
@@ -106,7 +111,7 @@ class LatentSSVM(BaseSSVM):
                 # we have some fully labeled examples, others are somehow initialized
                 X1, Y1 = X, Y
 
-            self.base_ssvm.fit(X1, Y1)
+            self.base_ssvm.fit(X1, Y1, save_history=True)
             w = self.base_ssvm.w
             self.w_history_.append(w)
             self.number_of_iterations_.append(len(self.base_ssvm.primal_objective_curve_))
@@ -117,6 +122,11 @@ class LatentSSVM(BaseSSVM):
             self.objective_curve_.append(self.base_ssvm.objective_curve_[-1])
             self.primal_objective_curve_.append(self.base_ssvm.primal_objective_curve_[-1])
             gap = self.primal_objective_curve_[-1] - self.objective_curve_[-1]
+
+            self.inner_w.append(self.base_ssvm.w_history)
+            self.inner_sz.append(self.base_ssvm.w_history.shape[0])
+            self.inner_objective += self.base_ssvm.objective_curve_
+            self.inner_primal += self.base_ssvm.primal_objective_curve_
 
             if self.verbose:
                 print("Final primal objective: %f" % self.primal_objective_curve_[-1])
@@ -155,7 +165,7 @@ class LatentSSVM(BaseSSVM):
                 self.number_of_changes_.append(np.sum(changes))
     
                 Y = Y_new
-                self.base_ssvm.fit(X, Y, initialize=False)
+                self.base_ssvm.fit(X, Y, initialize=False, save_history=True)
 
                 w = self.base_ssvm.w
                 self.w_history_.append(w)
@@ -169,6 +179,11 @@ class LatentSSVM(BaseSSVM):
                 delta = np.linalg.norm(self.w_history_[-1] - self.w_history_[-2])
                 gap = self.primal_objective_curve_[-1] - self.objective_curve_[-1]
                 q_delta = np.abs(self.objective_curve_[-1] - self.objective_curve_[-2])
+
+                self.inner_w.append(self.base_ssvm.w_history)
+                self.inner_sz.append(self.base_ssvm.w_history.shape[0])
+                self.inner_objective += self.base_ssvm.objective_curve_
+                self.inner_primal += self.base_ssvm.primal_objective_curve_
 
                 if self.verbose:
                     print("|w-w_prev|: %f" % delta)
@@ -203,6 +218,11 @@ class LatentSSVM(BaseSSVM):
         self.primal_objective_curve_ = np.array(self.primal_objective_curve_)
         self.iter_done = iteration + 1
 
+        self.inner_w = np.vstack(self.inner_w)
+        self.inner_sz = np.array(self.inner_sz)
+        self.inner_primal = np.array(self.inner_primal)
+        self.inner_objective = np.array(self.inner_objective)
+
     def _get_data(self):
         # get all model data as a dict
         data = {}
@@ -215,6 +235,12 @@ class LatentSSVM(BaseSSVM):
         data['number_of_constraints'] = self.number_of_constraints_
         data['primal_objective_curve'] = self.primal_objective_curve_
         data['objective_curve'] = self.objective_curve_
+
+        data['inner_w'] = self.inner_w
+        data['inner_sz'] = self.inner_sz
+        data['inner_objective'] = self.inner_objective
+        data['inner_primal'] = self.inner_primal
+
         return data
 
     def _load_data(self, data):

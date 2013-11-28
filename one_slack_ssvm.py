@@ -371,7 +371,8 @@ class OneSlackSSVM(BaseSSVM):
             raise NoConstraint
         return Y_hat, dpsi, loss_mean
 
-    def fit(self, X, Y, constraints=None, warm_start=False, initialize=True):
+    def fit(self, X, Y, constraints=None, warm_start=False,
+            initialize=True, save_history=False):
         """Learn parameters using cutting plane method.
 
         Parameters
@@ -426,6 +427,9 @@ class OneSlackSSVM(BaseSSVM):
 
         else:
             constraints = self.constraints_
+
+        if save_history:
+            self.w_history = []
 
         self.qp_time = 0
         self.inference_time = 0
@@ -510,6 +514,9 @@ class OneSlackSSVM(BaseSSVM):
 
                 if self.verbose > 5:
                     print(self.w)
+
+                if save_history:
+                    self.w_history.append(self.w)
         except KeyboardInterrupt:
             pass
         if self.verbose and self.n_jobs == 1:
@@ -527,5 +534,8 @@ class OneSlackSSVM(BaseSSVM):
         if self.verbose > 0:
             print("final primal objective: %f gap: %f"
                   % (primal_objective, primal_objective - objective))
+
+        if save_history:
+            self.w_history = np.array(self.w_history)
 
         return self
