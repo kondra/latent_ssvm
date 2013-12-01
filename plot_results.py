@@ -82,7 +82,6 @@ def plot_heterogenous_per_iter(result):
     train_scores =  list(result.data['train_scores'])
     train_scores.append(result.meta['train_score'])
     train_scores = np.array(train_scores)
-#    deltas =  result.data['delta_history']
     changes = result.data['changes']
     objective_curve = result.data['objective_curve']
     primal_objective_curve = result.data['primal_objective_curve']
@@ -91,9 +90,7 @@ def plot_heterogenous_per_iter(result):
     pl.rc('text', usetex=True)
     pl.rc('font', family='serif')
 
-    pl.figure(figsize=(10, 5), dpi=96)
-
-    pl.subplot(1, 2, 1)
+    pl.figure(figsize=(5, 5), dpi=96)
     pl.title('score')
     pl.plot(x, scores, label='test')
     pl.plot(x, train_scores, c='r', label='train')
@@ -103,15 +100,7 @@ def plot_heterogenous_per_iter(result):
     pl.xlim([-1, scores.size])
     pl.legend(loc='lower right')
 
-#    pl.subplot(2, 2, 2)
-#    pl.title(r"\|w-w_{prev}\|_2")
-#    pl.plot(x, deltas)
-#    pl.scatter(x, deltas)
-#    pl.xlabel('iteration')
-#    pl.xlim([-1, scores.size + 1])
-#
-
-    pl.subplot(1, 2, 2)
+    pl.figure(figsize=(5,5), dpi=96)
     pl.title('objective')
     pl.plot(x[1:], primal_objective_curve[1:], label='primal')
     pl.scatter(x[1:], primal_objective_curve[1:])
