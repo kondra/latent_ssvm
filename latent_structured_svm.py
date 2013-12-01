@@ -165,7 +165,10 @@ class LatentSSVM(BaseSSVM):
                 self.number_of_changes_.append(np.sum(changes))
     
                 Y = Y_new
-                self.base_ssvm.fit(X, Y, initialize=False, save_history=True)
+                if iteration > 0:
+                    self.base_ssvm.fit(X, Y, warm_start='soft', initialize=False, save_history=True)
+                else:
+                    self.base_ssvm.fit(X, Y, warm_start=False, initialize=False, save_history=True)
 
                 w = self.base_ssvm.w
                 self.w_history_.append(w)
@@ -178,7 +181,7 @@ class LatentSSVM(BaseSSVM):
                 self.primal_objective_curve_.append(self.base_ssvm.primal_objective_curve_[-1])
                 delta = np.linalg.norm(self.w_history_[-1] - self.w_history_[-2])
                 gap = self.primal_objective_curve_[-1] - self.objective_curve_[-1]
-                q_delta = np.abs(self.objective_curve_[-1] - self.objective_curve_[-2])
+                q_delta = np.abs(self.primal_objective_curve_[-1] - self.primal_objective_curve_[-2])
 
                 self.inner_w.append(self.base_ssvm.w_history)
                 self.inner_sz.append(self.base_ssvm.w_history.shape[0])
