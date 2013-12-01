@@ -111,7 +111,13 @@ class LatentSSVM(BaseSSVM):
                 # we have some fully labeled examples, others are somehow initialized
                 X1, Y1 = X, Y
 
+            #now it's a dirty hack
+            # we'd like to find a good initialstarting point, let ssvm converge
+            old_max_iter = self.base_ssvm.max_iter
+            self.base_ssvm.max_iter = 10000
             self.base_ssvm.fit(X1, Y1, save_history=True)
+            self.base_ssvm.max_iter = old_max_iter
+
             w = self.base_ssvm.w
             self.w_history_.append(w)
             self.number_of_iterations_.append(len(self.base_ssvm.primal_objective_curve_))
