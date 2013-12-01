@@ -122,6 +122,7 @@ def get_all_from_mongo(dataset):
     exps = []
     for meta in cl.find():
         exps.append(meta)
+    return exps
 
 def create_model(result):
     meta = result.meta
@@ -159,41 +160,48 @@ def create_model(result):
 
     return clf
 
-def syntetic_train_score_comp(result):
-    clf = create_model(result)
-
-    dataset = result.meta['dataset']
+def load_dataset(result):
     n_train = result.meta['n_train']
     n_full = result.meta['n_full']
 
-    X, Y = load_syntetic(dataset)
+    Xtrain = None
+    Ytrain = None
+    Ytrain_full = None
+    Xtest = None
+    Ytest = None
+
+    if result.meta['dataset_name'] == 'syntetic':
+        dataset = result.meta['dataset']
+        X, Y = load_syntetic(dataset)
+        Xtrain, Ytrain, Ytrain_full, Xtest, Ytest = \
+            split_test_train(X, Y, n_full, n_train)
+    elif result.meta['dataset_name'] == 'msrc':
+        Xtrain, Ytrain, Ytrain_full, Xtest, Ytest = \
+            msrc_load(n_full, n_train)
+
+    return Xtrain, Ytrain, Ytrain_full, Xtest, Ytest
+
+def compute_score_per_iter(result):
+    clf = create_model(result)
 
     Xtrain, Ytrain, Ytrain_full, Xtest, Ytest = \
-        split_test_train(X, Y, n_full, n_train)
+        load_dataset(result)
 
     train_scores = []
     test_scores = []
-    for i in xrange(result.data['inner_w'].shape[0]):
-        clf.w = result.data['inner_w'][i,:]
-        train_scores.append(clf.score(Xtrain, Ytrain_full))
-        test_scores.append(clf.score(Xtest, Ytest))
 
-    return test_scores, train_scores
-
-def msrc_train_score_comp(result):
-    clf = create_model(result)
-
-    n_train = result.meta['n_train']
-    n_full = result.meta['n_full']
-
-    Xtrain, Ytrain, Ytrain_full, Xtest, Ytest = msrc_load(n_full, n_train)
-
-    train_scores = []
-    test_scores = []
     for i in xrange(result.data['inner_w'].shape[0]):
         print('%d of %d' % (i, result.data['inner_w'].shape[0]))
         clf.w = result.data['inner_w'][i,:]
         train_scores.append(clf.score(Xtrain, Ytrain_full))
         test_scores.append(clf.score(Xtest, Ytest))
 
-    return test_scores, train_scores
+    train_scores = np.array(train_scores)
+    test_scores = np.array(test_scores)
+
+    result.data['inner_train_scores'] = train_scores
+    result.data['inner_test_scores'] = test_scores
+
+    result.update_data()
+    
+    return result
