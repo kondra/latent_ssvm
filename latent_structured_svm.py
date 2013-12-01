@@ -80,6 +80,7 @@ class LatentSSVM(BaseSSVM):
             self.number_of_constraints_ = []
             self.objective_curve_ = []
             self.primal_objective_curve_ = []
+            self.inference_calls_ = []
 
             self.inner_w = []
             self.inner_sz = []
@@ -87,6 +88,7 @@ class LatentSSVM(BaseSSVM):
             self.inner_primal = []
 
             # all data is fully labeled, quit
+            # it should not work!
             if np.all([y.full_labeled for y in Y]):
                 self.base_ssvm.fit(X, Y)
                 self.w_history_ = np.array([self.base_ssvm.w])
@@ -111,7 +113,7 @@ class LatentSSVM(BaseSSVM):
                 # we have some fully labeled examples, others are somehow initialized
                 X1, Y1 = X, Y
 
-            #now it's a dirty hack
+            # now it's a dirty hack
             # we'd like to find a good initialstarting point, let ssvm converge
             old_max_iter = self.base_ssvm.max_iter
             self.base_ssvm.max_iter = 10000
@@ -120,13 +122,14 @@ class LatentSSVM(BaseSSVM):
 
             w = self.base_ssvm.w
             self.w_history_.append(w)
-            self.number_of_iterations_.append(len(self.base_ssvm.primal_objective_curve_))
+            self.number_of_iterations_.append(self.base_ssvm.iterations_done)
             self.timestamps_.append(time() - start_time)
             self.qp_time_.append(self.base_ssvm.qp_time)
             self.inference_time_.append(self.base_ssvm.inference_time)
             self.number_of_constraints_.append(len(self.base_ssvm.constraints_))
             self.objective_curve_.append(self.base_ssvm.objective_curve_[-1])
             self.primal_objective_curve_.append(self.base_ssvm.primal_objective_curve_[-1])
+            self.inference_calls_.append(self.base_ssvm.inference_calls)
             gap = self.primal_objective_curve_[-1] - self.objective_curve_[-1]
 
             self.inner_w.append(self.base_ssvm.w_history)
@@ -172,19 +175,20 @@ class LatentSSVM(BaseSSVM):
     
                 Y = Y_new
                 if iteration > 0:
-                    self.base_ssvm.fit(X, Y, warm_start='soft', initialize=False, save_history=True)
+                    self.base_ssvm.fit(X, Y, warm_start=True, initialize=False, save_history=True)
                 else:
                     self.base_ssvm.fit(X, Y, warm_start=False, initialize=False, save_history=True)
 
                 w = self.base_ssvm.w
                 self.w_history_.append(w)
-                self.number_of_iterations_.append(len(self.base_ssvm.primal_objective_curve_))
+                self.number_of_iterations_.append(self.base_ssvm.iterations_done)
                 self.timestamps_.append(time() - start_time)
                 self.qp_time_.append(self.base_ssvm.qp_time)
                 self.inference_time_.append(self.base_ssvm.inference_time)
                 self.number_of_constraints_.append(len(self.base_ssvm.constraints_))
                 self.objective_curve_.append(self.base_ssvm.objective_curve_[-1])
                 self.primal_objective_curve_.append(self.base_ssvm.primal_objective_curve_[-1])
+                self.inference_calls_.append(self.base_ssvm.inference_calls)
                 delta = np.linalg.norm(self.w_history_[-1] - self.w_history_[-2])
                 gap = self.primal_objective_curve_[-1] - self.objective_curve_[-1]
                 q_delta = np.abs(self.primal_objective_curve_[-1] - self.primal_objective_curve_[-2])
@@ -225,6 +229,7 @@ class LatentSSVM(BaseSSVM):
         self.number_of_constraints_ = np.array(self.number_of_constraints_)
         self.objective_curve_ = np.array(self.objective_curve_)
         self.primal_objective_curve_ = np.array(self.primal_objective_curve_)
+        self.inference_calls_ = np.array(self.inference_calls_)
         self.iter_done = iteration + 1
 
         self.inner_w = np.vstack(self.inner_w)
@@ -241,6 +246,7 @@ class LatentSSVM(BaseSSVM):
         data['timestamps'] = self.timestamps_
         data['qp_timestamps'] = self.qp_time_
         data['inference_timestamps'] = self.inference_time_
+        data['inference_calls'] = self.inference_calls_
         data['number_of_constraints'] = self.number_of_constraints_
         data['primal_objective_curve'] = self.primal_objective_curve_
         data['objective_curve'] = self.objective_curve_
@@ -263,6 +269,7 @@ class LatentSSVM(BaseSSVM):
         self.number_of_constraints_ = list(data['number_of_constraints'])
         self.primal_objective_curve_ = list(data['primal_objective_curve'])
         self.objective_curve_ = list(data['objective_curve'])
+        self.inference_calls_ = list(data['inference_calls'])
         self.iter_done = len(self.objective_curve_)
 
     def _predict_from_iter(self, X, i):

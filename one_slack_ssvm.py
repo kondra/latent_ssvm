@@ -145,6 +145,8 @@ class OneSlackSSVM(BaseSSVM):
         self.switch_to = switch_to
         self.qp_time = 0
         self.inference_time = 0
+        self.inference_calls = 0
+        self.iterations_done = 0
 
     def _solve_1_slack_qp(self, constraints, n_samples):
         C = np.float(self.C) * n_samples  # this is how libsvm/svmstruct do it
@@ -354,6 +356,7 @@ class OneSlackSSVM(BaseSSVM):
         else:
             Y_hat = self.model.batch_loss_augmented_inference(
                 X, Y, self.w, relaxed=True)
+        self.inference_calls += len(Y)
         self.inference_time += time() - start_time
         # compute the mean over psis and losses
 
@@ -431,6 +434,9 @@ class OneSlackSSVM(BaseSSVM):
         if save_history:
             self.w_history = []
 
+        self.iterations_done = 0
+        self.inference_calls = 0
+
         self.qp_time = 0
         self.inference_time = 0
 
@@ -446,6 +452,8 @@ class OneSlackSSVM(BaseSSVM):
             # catch ctrl+c to stop training
 
             for iteration in xrange(self.max_iter):
+                self.iterations_done += 1
+
                 # main loop
                 cached_constraint = False
                 if self.verbose > 0:
