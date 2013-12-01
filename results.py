@@ -53,6 +53,14 @@ class ExperimentResult(object):
         f.close()
         return grp.id.id
 
+    def update_data(self):
+        f = h5py.File(path_to_datafile, 'a', libver='latest')
+        grp = f[self.meta['dataset_name']][self.meta['id']]
+        for k in self.data.keys():
+            if k not in grp.keys():
+                grp.create_dataset(k, data=self.data[k])
+        f.close()
+
     def save_meta(self):
         client = MongoClient()
         client['lSSVM']['base'].insert(self.meta)
