@@ -116,3 +116,21 @@ def plot_heterogenous_per_iter(result):
     pl.scatter(x[1:], changes)
     pl.xlabel('iteration')
     pl.xlim([-1, scores.size])
+
+def plot_inner_scores(result):
+    n_iter = result.data['w_history'].shape[0]
+    sizes = result.data['inner_sz']
+    test_scores = result.data['inner_test_scores']
+    train_scores = result.data['inner_train_scores']
+    acc = 0
+    pl.rc('text', usetex=True)
+    pl.rc('font', family='serif')
+    pl.figure(figsize=(5, 5 * n_iter))
+    for i in xrange(0, n_iter):
+        pl.subplot(n_iter,1,i+1)
+        pl.plot(test_scores[acc:acc+sizes[i]], label='test')
+        pl.plot(train_scores[acc:acc+sizes[i]], c='r', label='train')
+        pl.legend(loc='lower right')
+        pl.ylabel('score')
+        pl.xlabel('iteration')
+        acc += sizes[i]
