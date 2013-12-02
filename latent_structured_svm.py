@@ -44,7 +44,7 @@ class LatentSSVM(BaseSSVM):
         self.n_jobs = n_jobs
         self.min_changes = min_changes
 
-    def fit(self, X, Y, initialize=True, continued=False):
+    def fit(self, X, Y, initialize=True, continued=False, warm_start=False):
         """Learn parameters using the concave-convex procedure.
 
         Parameters
@@ -115,10 +115,15 @@ class LatentSSVM(BaseSSVM):
 
             # now it's a dirty hack
             # we'd like to find a good initialstarting point, let ssvm converge
-            old_max_iter = self.base_ssvm.max_iter
-            self.base_ssvm.max_iter = 10000
+            old_max_iter = None
+            if warm_start:
+                old_max_iter = self.base_ssvm.max_iter
+                self.base_ssvm.max_iter = 10000
+
             self.base_ssvm.fit(X1, Y1, save_history=True)
-            self.base_ssvm.max_iter = old_max_iter
+
+            if warm_start:
+                self.base_ssvm.max_iter = old_max_iter
 
             w = self.base_ssvm.w
             self.w_history_.append(w)
@@ -174,10 +179,15 @@ class LatentSSVM(BaseSSVM):
                 self.number_of_changes_.append(np.sum(changes))
     
                 Y = Y_new
-                if iteration > 0:
-                    self.base_ssvm.fit(X, Y, warm_start=True, initialize=False, save_history=True)
-                else:
+                if not warm_start:
                     self.base_ssvm.fit(X, Y, warm_start=False, initialize=False, save_history=True)
+                else:
+                    if iteration > 0:
+                        self.base_ssvm.fit(X, Y, warm_start=warm_start,
+                                           initialize=False, save_history=True)
+                    else:
+                        self.base_ssvm.fit(X, Y, warm_start=False,
+                                           initialize=False, save_history=True)
 
                 w = self.base_ssvm.w
                 self.w_history_.append(w)

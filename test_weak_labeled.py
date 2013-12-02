@@ -104,7 +104,8 @@ def split_test_train(X, Y, n_full, n_train):
 def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
                   max_iter=500, inner_tol=0.001, outer_tol=0.01, min_changes=0,
                   initialize=True, alpha=0.1, n_inference_iter=5,
-                  inactive_window=50, inactive_threshold=1e-5):
+                  inactive_window=50, inactive_threshold=1e-5,
+                  warm_start=False):
     # save parameters as meta
     meta_data = locals()
 
@@ -122,7 +123,7 @@ def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
         split_test_train(X, Y, n_full, n_train)
 
     start = time()
-    clf.fit(x_train, y_train, initialize=initialize)
+    clf.fit(x_train, y_train, initialize=initialize, warm_start=warm_start)
     stop = time()
 
     train_score = clf.score(x_train, y_train_full)
@@ -181,7 +182,8 @@ def msrc_load(n_full, n_train):
 def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
               max_iter=500, inner_tol=0.001, outer_tol=0.01, min_changes=0,
               initialize=True, alpha=0.1, n_inference_iter=5,
-              inactive_window=50, inactive_threshold=1e-5):
+              inactive_window=50, inactive_threshold=1e-5,
+              warm_start=False):
     meta_data = locals()
 
     crf = HCRF(n_states=24, n_features=2028, n_edge_features=4, alpha=alpha,
@@ -196,7 +198,7 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
     Xtrain, Ytrain, Ytrain_full, Xtest, Ytest = msrc_load(n_full, n_train)
 
     start = time()
-    clf.fit(Xtrain, Ytrain, initialize=initialize)
+    clf.fit(Xtrain, Ytrain, initialize=initialize, warm_start=warm_start)
     stop = time()
 
     train_score = clf.score(Xtrain, Ytrain_full)
