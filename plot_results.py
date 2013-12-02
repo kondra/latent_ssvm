@@ -134,3 +134,20 @@ def plot_inner_scores(result):
         pl.ylabel('score')
         pl.xlabel('iteration')
         acc += sizes[i]
+
+def plot_inner_objectives(result):
+    n_iter = result.data['w_history'].shape[0]
+    sizes = result.data['inner_sz']
+    inner_primal = result.data['inner_primal']
+    inner_objective = result.data['inner_objective']
+    acc = 0
+    pl.rc('text', usetex=True)
+    pl.rc('font', family='serif')
+    pl.figure(figsize=(5, 5 * n_iter))
+    for i in xrange(0, n_iter):
+        pl.subplot(n_iter,1,i+1)
+        pl.plot(inner_primal[acc:acc+sizes[i]], label='primal')
+        pl.plot(inner_objective[acc:acc+sizes[i]], c='r', label='cutting-plane')
+        pl.legend(loc='upper right')
+        pl.xlabel('iteration')
+        acc += sizes[i]
