@@ -14,4 +14,4 @@
 * add average-precision metric
 * add function to compute per-class accuracy statistic
 * store syntetic data in hdf5
-* save w in inner ssvm loop
+* DONE: save w in inner ssvm loop
