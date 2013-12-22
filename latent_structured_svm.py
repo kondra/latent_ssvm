@@ -81,11 +81,13 @@ class LatentSSVM(BaseSSVM):
             self.objective_curve_ = []
             self.primal_objective_curve_ = []
             self.inference_calls_ = []
+            self.latent_objective_ = []
 
             self.inner_w = []
             self.inner_sz = []
             self.inner_objective = []
             self.inner_primal = []
+            self.inner_staged_inference = []
 
             # all data is fully labeled, quit
             # it should not work!
@@ -126,6 +128,7 @@ class LatentSSVM(BaseSSVM):
                 self.base_ssvm.max_iter = old_max_iter
 
             w = self.base_ssvm.w
+
             self.w_history_.append(w)
             self.number_of_iterations_.append(self.base_ssvm.iterations_done)
             self.timestamps_.append(time() - start_time)
@@ -141,6 +144,7 @@ class LatentSSVM(BaseSSVM):
             self.inner_sz.append(self.base_ssvm.w_history.shape[0])
             self.inner_objective += self.base_ssvm.objective_curve_
             self.inner_primal += self.base_ssvm.primal_objective_curve_
+            self.inner_staged_inference += self.base_ssvm.staged_inference_calls
 
             if self.verbose:
                 print("Final primal objective: %f" % self.primal_objective_curve_[-1])
@@ -179,6 +183,13 @@ class LatentSSVM(BaseSSVM):
                 self.number_of_changes_.append(np.sum(changes))
     
                 Y = Y_new
+
+                latent_objective = self.base_ssvm.fit(X, Y, only_objective=True,
+                                                      previous_w=self.w_history_[-1])
+                self.latent_objective_.append(latent_objective)
+                if self.verbose:
+                    print("Previous Latent SSVM objective: %f" % self.latent_objective_[-1])
+
                 if not warm_start:
                     self.base_ssvm.fit(X, Y, warm_start=False, initialize=False, save_history=True)
                 else:
@@ -190,6 +201,7 @@ class LatentSSVM(BaseSSVM):
                                            initialize=False, save_history=True)
 
                 w = self.base_ssvm.w
+
                 self.w_history_.append(w)
                 self.number_of_iterations_.append(self.base_ssvm.iterations_done)
                 self.timestamps_.append(time() - start_time)
@@ -207,6 +219,7 @@ class LatentSSVM(BaseSSVM):
                 self.inner_sz.append(self.base_ssvm.w_history.shape[0])
                 self.inner_objective += self.base_ssvm.objective_curve_
                 self.inner_primal += self.base_ssvm.primal_objective_curve_
+                self.inner_staged_inference += self.base_ssvm.staged_inference_calls
 
                 if self.verbose:
                     print("|w-w_prev|: %f" % delta)
@@ -240,12 +253,14 @@ class LatentSSVM(BaseSSVM):
         self.objective_curve_ = np.array(self.objective_curve_)
         self.primal_objective_curve_ = np.array(self.primal_objective_curve_)
         self.inference_calls_ = np.array(self.inference_calls_)
+        self.latent_objective_ = np.array(self.latent_objective_)
         self.iter_done = iteration + 1
 
         self.inner_w = np.vstack(self.inner_w)
         self.inner_sz = np.array(self.inner_sz)
         self.inner_primal = np.array(self.inner_primal)
         self.inner_objective = np.array(self.inner_objective)
+        self.inner_staged_inference = np.array(self.inner_staged_inference)
 
     def _get_data(self):
         # get all model data as a dict
@@ -260,11 +275,13 @@ class LatentSSVM(BaseSSVM):
         data['number_of_constraints'] = self.number_of_constraints_
         data['primal_objective_curve'] = self.primal_objective_curve_
         data['objective_curve'] = self.objective_curve_
+        data['latent_objective'] = self.latent_objective_
 
         data['inner_w'] = self.inner_w
         data['inner_sz'] = self.inner_sz
         data['inner_objective'] = self.inner_objective
         data['inner_primal'] = self.inner_primal
+        data['inner_staged_inference'] = self.inner_staged_inference
 
         return data
 

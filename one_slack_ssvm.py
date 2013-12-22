@@ -308,6 +308,8 @@ class OneSlackSSVM(BaseSSVM):
                            self.model.loss(y, y_hat), y_hat))
 
     def _constraint_from_cache(self, X, Y, psi_gt, constraints):
+        if self.inference_cache == 0:
+            raise NoConstraint
         if (not getattr(self, 'inference_cache_', False) or
                 self.inference_cache_ is False):
             if self.verbose > 10:
@@ -375,7 +377,8 @@ class OneSlackSSVM(BaseSSVM):
         return Y_hat, dpsi, loss_mean
 
     def fit(self, X, Y, constraints=None, warm_start=False,
-            initialize=True, save_history=False):
+            initialize=True, save_history=False,
+            only_objective=False, previous_w=None):
         """Learn parameters using cutting plane method.
 
         Parameters
@@ -434,8 +437,12 @@ class OneSlackSSVM(BaseSSVM):
         if save_history:
             self.w_history = []
 
+        if only_objective:
+            self.w = previous_w
+
         self.iterations_done = 0
         self.inference_calls = 0
+        self.staged_inference_calls = []
 
         self.qp_time = 0
         self.inference_time = 0
@@ -453,6 +460,7 @@ class OneSlackSSVM(BaseSSVM):
 
             for iteration in xrange(self.max_iter):
                 self.iterations_done += 1
+                self.staged_inference_calls.append(self.inference_calls)
 
                 # main loop
                 cached_constraint = False
@@ -494,6 +502,10 @@ class OneSlackSSVM(BaseSSVM):
                 primal_objective = (self.C * len(X)
                                     * np.max(last_slack, 0)
                                     + np.sum(self.w ** 2) / 2)
+
+                if only_objective:
+                    return primal_objective
+
                 self.primal_objective_curve_.append(primal_objective)
                 self.cached_constraint_.append(cached_constraint)
 
