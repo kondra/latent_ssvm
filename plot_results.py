@@ -161,3 +161,10 @@ def plot_latent_objective(result, first_iter=0):
     pl.xlabel('iteration')
     pl.ylabel('Objective')
     pl.title('Latent SSVM objective')
+
+def plot_score(result):
+    pl.figure(figsize=(5,5))
+    pl.plot(result.data['raw_scores'])
+    pl.xlabel('iteration')
+    pl.ylabel('kappa+delta')
+    pl.title('Latent SSVM score')
