@@ -54,13 +54,17 @@ class HCRF(StructuredModel):
             return y
         unary_potentials = self._get_unary_potentials(x, w)
         # forbid h that is incompoatible with y
-        # by modifying unary params
+        # by modifying unary potentials
         other_states = list(self.all_states - set(y.weak))
         unary_potentials[:, other_states] = -1000
         pairwise_potentials = self._get_pairwise_potentials(x, w)
         edges = self._get_edges(x)
         h = inference_dispatch(unary_potentials, pairwise_potentials, edges,
                                self.inference_method, relaxed=False, n_iter=self.n_iter)
+#
+        for l in np.unique(h):
+            assert(l in y.weak)
+#
         return Label(h, y.weak, y.weights, False)
 
     def _get_pairwise_potentials(self, x, w):
