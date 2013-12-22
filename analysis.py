@@ -1,7 +1,5 @@
 import numpy as np
-#import pylab as pl
 
-#from pystruct.learners import OneSlackSSVM
 from one_slack_ssvm import OneSlackSSVM
 from latent_structured_svm import LatentSSVM
 from heterogenous_crf import HCRF
@@ -9,110 +7,6 @@ from heterogenous_crf import HCRF
 from test_weak_labeled import msrc_load
 from test_weak_labeled import split_test_train
 from data_loader import load_syntetic
-
-def msrc_train_score_per_iter(result, only_weak=False, plot=True):
-    w_history = result.data['w_history']
-    meta_data = result.meta
-    n_full = meta_data['n_full']
-    n_train = meta_data['n_train']
-    n_inference_iter = meta_data['n_inference_iter']
-    C = meta_data['C']
-    latent_iter = meta_data['latent_iter']
-    max_iter = meta_data['max_iter']
-    inner_tol = meta_data['inner_tol']
-    outer_tol = meta_data['outer_tol']
-    alpha = meta_data['alpha']
-    min_changes = meta_data['min_changes']
-    initialize = meta_data['initialize']
-
-    crf = HCRF(n_states=24, n_features=2028, n_edge_features=4, alpha=alpha,
-               inference_method='gco', n_iter=n_inference_iter)
-    base_clf = OneSlackSSVM(crf, max_iter=max_iter, C=C, verbose=2,
-                            tol=inner_tol, n_jobs=4, inference_cache=10)
-    clf = LatentSSVM(base_clf, latent_iter=latent_iter, verbose=2,
-                     tol=outer_tol, min_changes=min_changes, n_jobs=4)
-
-    Xtrain, Ytrain, Ytrain_full, Xtest, Ytest = msrc_load(n_full, n_train)
-
-    if only_weak:
-        Xtrain = [x for (i, x) in enumerate(Xtrain) if not Ytrain[i].full_labeled]
-        Ytrain_full = [y for (i, y) in enumerate(Ytrain_full) if not Ytrain[i].full_labeled]
-
-    base_clf.w = None
-    clf.w_history_ = w_history
-    clf.iter_done = w_history.shape[0]
-
-    train_scores = []
-    for score in clf.staged_score(Xtrain, Ytrain_full):
-        train_scores.append(score)
-    train_scores = np.array(train_scores)
-
-    if plot:
-        x = np.arange(0, train_scores.size)
-        pl.rc('text', usetex=True)
-        pl.rc('font', family='serif')
-        pl.figure(figsize=(10,10), dpi=96)
-        pl.title('score on train set')
-        pl.plot(x, train_scores)
-        pl.scatter(x, train_scores)
-        pl.xlabel('iteration')
-        pl.xlim([-0.5, train_scores.size + 1])
-
-    return train_scores
-
-def syntetic_train_score_per_iter(result, only_weak=False, plot=True):
-    w_history = result.data['w_history']
-    meta_data = result.meta
-    n_full = meta_data['n_full']
-    n_train = meta_data['n_train']
-    n_inference_iter = meta_data['n_inference_iter']
-    dataset = meta_data['dataset']
-    C = meta_data['C']
-    latent_iter = meta_data['latent_iter']
-    max_iter = meta_data['max_iter']
-    inner_tol = meta_data['inner_tol']
-    outer_tol = meta_data['outer_tol']
-    alpha = meta_data['alpha']
-    min_changes = meta_data['min_changes']
-    initialize = meta_data['initialize']
-
-    crf = HCRF(n_states=10, n_features=10, n_edge_features=2, alpha=alpha,
-               inference_method='gco', n_iter=n_inference_iter)
-    base_clf = OneSlackSSVM(crf, max_iter=max_iter, C=C, verbose=0,
-                            tol=inner_tol, n_jobs=4, inference_cache=100)
-    clf = LatentSSVM(base_clf, latent_iter=latent_iter, verbose=2,
-                     tol=outer_tol, min_changes=min_changes, n_jobs=4)
-
-    X, Y = load_syntetic(dataset)
-
-    Xtrain, Ytrain, Ytrain_full, Xtest, Ytest = \
-        split_test_train(X, Y, n_full, n_train)
-
-    if only_weak:
-        Xtrain = [x for (i, x) in enumerate(Xtrain) if not Ytrain[i].full_labeled]
-        Ytrain_full = [y for (i, y) in enumerate(Ytrain_full) if not Ytrain[i].full_labeled]
-
-    base_clf.w = None
-    clf.w_history_ = w_history
-    clf.iter_done = w_history.shape[0]
-
-    train_scores = []
-    for score in clf.staged_score(Xtrain, Ytrain_full):
-        train_scores.append(score)
-    train_scores = np.array(train_scores)
-
-    if plot:
-        x = np.arange(0, train_scores.size)
-        pl.rc('text', usetex=True)
-        pl.rc('font', family='serif')
-        pl.figure(figsize=(10,10), dpi=96)
-        pl.title('score on train set')
-        pl.plot(x, train_scores)
-        pl.scatter(x, train_scores)
-        pl.xlabel('iteration')
-        pl.xlim([-0.5, train_scores.size + 1])
-
-    return train_scores
 
 from pymongo import MongoClient
 
@@ -181,7 +75,7 @@ def load_dataset(result):
 
     return Xtrain, Ytrain, Ytrain_full, Xtest, Ytest
 
-def compute_score_per_iter(result):
+def compute_score_per_inner_iter(result, score_types=['train', 'test', 'raw']):
     clf = create_model(result)
 
     Xtrain, Ytrain, Ytrain_full, Xtest, Ytest = \
@@ -189,19 +83,53 @@ def compute_score_per_iter(result):
 
     train_scores = []
     test_scores = []
+    raw_scores = []
 
     for i in xrange(result.data['inner_w'].shape[0]):
         print('%d of %d' % (i, result.data['inner_w'].shape[0]))
         clf.w = result.data['inner_w'][i,:]
-        train_scores.append(clf.score(Xtrain, Ytrain_full))
-        test_scores.append(clf.score(Xtest, Ytest))
+        if 'train' in score_types:
+            train_scores.append(clf.score(Xtrain, Ytrain_full))
+        if 'test' in score_types:
+            test_scores.append(clf.score(Xtest, Ytest))
+        if 'raw' in score_types:
+            raw_scores.append(clf.score(Xtrain, Ytrain))
 
     train_scores = np.array(train_scores)
     test_scores = np.array(test_scores)
+    raw_scores = np.array(raw_scores)
 
-    result.data['inner_train_scores'] = train_scores
-    result.data['inner_test_scores'] = test_scores
+    if 'train' in score_types:
+        result.data['inner_train_scores'] = train_scores
+    if 'test' in score_types:
+        result.data['inner_test_scores'] = test_scores
+    if 'raw' in score_types:
+        result.data['inner_raw_scores'] = raw_scores
 
     result.update_data()
     
+    return result
+
+def compute_score_per_iter(result, score_types=['raw']):
+    # score_types should be a list of strings, possible values are:
+    # 'raw', 'train', 'test'
+
+    clf = create_model(result)
+
+    Xtrain, Ytrain, Ytrain_full, Xtest, Ytest = \
+        load_dataset(result)
+
+    clf.base_ssvm.w = None
+    clf.w_history_ = result.data['w_history']
+    clf.iter_done = w_history.shape[0]
+
+    if 'train' in score_types:
+        result.data['train_scores'] = np.array([s for s in clf.staged_score(Xtrain, Ytrain_full)])
+    if 'test' in score_types:
+        result.data['test_scores'] = np.array([s for s in clf.staged_score(Xtest, Ytest)])
+    if 'raw' in score_types:
+        result.data['raw_scores'] = np.array([s for s in clf.staged_score(Xtrain, Ytrain)])
+
+    result.update_data()
+
     return result
