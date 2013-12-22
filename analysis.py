@@ -121,14 +121,31 @@ def compute_score_per_iter(result, score_types=['raw']):
 
     clf.base_ssvm.w = None
     clf.w_history_ = result.data['w_history']
-    clf.iter_done = w_history.shape[0]
+    clf.iter_done = clf.w_history_.shape[0]
 
     if 'train' in score_types:
         result.data['train_scores'] = np.array([s for s in clf.staged_score(Xtrain, Ytrain_full)])
     if 'test' in score_types:
         result.data['test_scores'] = np.array([s for s in clf.staged_score(Xtest, Ytest)])
     if 'raw' in score_types:
-        result.data['raw_scores'] = np.array([s for s in clf.staged_score(Xtrain, Ytrain)])
+        result.data['raw_scores'] = np.array([s for s in clf.staged_score2(Xtrain, Ytrain)])
+
+    result.update_data()
+
+    return result
+
+def compute_latent_objective_per_iter(result):
+    clf = create_model(result)
+
+    Xtrain, Ytrain, Ytrain_full, Xtest, Ytest = \
+        load_dataset(result)
+
+    clf.base_ssvm.w = None
+    clf.w_history_ = result.data['w_history']
+    clf.iter_done = clf.w_history_.shape[0]
+
+    result.data['latent_objective'] = \
+        np.array([obj for obj in clf.staged_latent_objective(Xtrain, Ytrain)])
 
     result.update_data()
 

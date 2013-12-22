@@ -318,6 +318,12 @@ class LatentSSVM(BaseSSVM):
             score = 1. - np.sum(losses) / float(len(X))
             yield score
 
+    def staged_score2(self, X, Y):
+        for i in xrange(self.iter_done):
+            Y_pred = self._predict_from_iter(X, i)
+            losses = [self.model.loss(y, y_pred) for y, y_pred in zip(Y, Y_pred)]
+            yield np.mean(losses)
+
     def predict_latent(self, X):
         return self.base_ssvm.predict(X)
 
@@ -343,6 +349,13 @@ class LatentSSVM(BaseSSVM):
         losses = [self.model.loss(y, y_pred) / float(np.sum(y.weights))
                   for y, y_pred in zip(Y, self.predict_latent(X))]
         return 1. - np.sum(losses) / float(len(X))
+
+    def staged_latent_objective(self, X, Y):
+        for i in xrange(self.iter_done):
+            w = self.w_history_[i]
+            Y = Parallel(n_jobs=self.n_jobs, verbose=0, max_nbytes=1e8)(
+                delayed(latent)(self.model, x, y, w) for x, y in zip(X, Y))
+            yield self.base_ssvm.fit(X, Y, only_objective=True, previous_w=w)
 
     @property
     def model(self):

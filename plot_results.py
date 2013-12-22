@@ -151,3 +151,13 @@ def plot_inner_objectives(result):
         pl.legend(loc='upper right')
         pl.xlabel('iteration')
         acc += sizes[i]
+
+def plot_latent_objective(result, first_iter=0):
+    objective = result.data['latent_objective'][first_iter:]
+    ind = np.arange(first_iter, objective.shape[0] + first_iter)
+    pl.figure(figsize=(5,5))
+    pl.plot(ind, objective)
+    pl.xticks(ind, ind)
+    pl.xlabel('iteration')
+    pl.ylabel('Objective')
+    pl.title('Latent SSVM objective')
