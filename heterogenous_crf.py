@@ -5,12 +5,33 @@
 import numpy as np
 
 from pystruct.models.base import StructuredModel
-from pystruct.inference.inference_methods import inference_dispatch
 from pystruct.models.utils import loss_augment_weighted_unaries
 
 from sklearn.utils.extmath import safe_sparse_dot
 
 from label import Label
+
+
+def inference_gco(unary_potentials, pairwise_potentials, edges, **kwargs):
+    from pygco import cut_from_graph_gen_potts
+
+    shape_org = unary_potentials.shape[:-1]
+    n_states = unary_potentials.shape[-1]
+
+    pairwise_cost = {}
+    for i in xrange(0, pairwise_potentials.shape[0]):
+        cost = pairwise_potentials[i, 0, 0]
+        if cost >= 0:
+            pairwise_cost[(edges[i, 0], edges[i, 1])] = cost
+
+    unary_potentials = (-1 * unary_potentials).copy()
+
+    if 'n_iter' in kwargs:
+        y = cut_from_graph_gen_potts(unary_potentials, pairwise_cost, n_iter=kwargs['n_iter'])
+    else:
+        y = cut_from_graph_gen_potts(unary_potentials, pairwise_cost)
+
+    return y[0].reshape(shape_org)
 
 
 class HCRF(StructuredModel):
@@ -59,8 +80,7 @@ class HCRF(StructuredModel):
         unary_potentials[:, other_states] = -1000
         pairwise_potentials = self._get_pairwise_potentials(x, w)
         edges = self._get_edges(x)
-        h = inference_dispatch(unary_potentials, pairwise_potentials, edges,
-                               self.inference_method, relaxed=False, n_iter=self.n_iter)
+        h = inference_gco(unary_potentials, pairwise_potentials, edges, n_iter=self.n_iter)
 #
         for l in np.unique(h):
             assert(l in y.weak)
@@ -173,11 +193,7 @@ class HCRF(StructuredModel):
             loss_augment_weighted_unaries(unary_potentials, y.full,
                                           y.weights.astype(np.double))
 
-            h = inference_dispatch(unary_potentials, pairwise_potentials,
-                                   edges, self.inference_method,
-                                   relaxed=relaxed,
-                                   return_energy=return_energy,
-                                   n_iter=self.n_iter)
+            h = inference_gco(unary_potentials, pairwise_potentials, edges, n_iter=self.n_iter)
             return Label(h, None, y.weights, True)
         else:
             # this is weak labeled example
@@ -190,10 +206,6 @@ class HCRF(StructuredModel):
                 if label not in y.weak:
                     unary_potentials[:, label] += y.weights
 
-            edges = edges.copy().astype(np.int32)
-            pairwise_potentials = (1000 * pairwise_potentials).copy().astype(
-                np.int32)
-
             pairwise_cost = {}
             for i in xrange(0, edges.shape[0]):
                 cost = pairwise_potentials[i, 0, 0]
@@ -203,10 +215,9 @@ class HCRF(StructuredModel):
             from pygco import cut_from_graph_gen_potts
             shape_org = unary_potentials.shape[:-1]
 
-            unary_potentials = (-1000 * unary_potentials).copy().astype(
-                np.int32)
-            unary_potentials = unary_potentials.reshape(-1, self.n_states)
-            label_cost = (1000 * label_cost).copy().astype(np.int32)
+            unary_potentials = (-1 * unary_potentials).copy()
+            #unary_potentials = unary_potentials.reshape(-1, self.n_states)
+            #label_cost = label_cost.copy()
 
             h = cut_from_graph_gen_potts(unary_potentials, pairwise_cost,
                                          label_cost=label_cost, n_iter=self.n_iter)
@@ -257,8 +268,6 @@ class HCRF(StructuredModel):
         pairwise_potentials = self._get_pairwise_potentials(x, w)
         edges = self._get_edges(x)
 
-        h = inference_dispatch(unary_potentials, pairwise_potentials, edges,
-                               self.inference_method, relaxed=relaxed,
-                               return_energy=return_energy, n_iter=self.n_iter)
+        h = inference_gco(unary_potentials, pairwise_potentials, edges, n_iter=self.n_iter)
 
         return Label(h, None, None, True)
