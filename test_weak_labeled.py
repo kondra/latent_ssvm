@@ -99,7 +99,7 @@ def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
         train_scores.append(score)
 
     raw_scores = []
-    for score in clf.staged_score(x_train, y_train):
+    for score in clf.staged_score2(x_train, y_train):
         raw_scores.append(score)
 
     exp_data = clf._get_data()
@@ -159,7 +159,7 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
         train_scores.append(score)
 
     raw_scores = []
-    for score in clf.staged_score(Xtrain, Ytrain):
+    for score in clf.staged_score2(Xtrain, Ytrain):
         raw_scores.append(score)
 
     exp_data = clf._get_data()
