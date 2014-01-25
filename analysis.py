@@ -4,7 +4,7 @@ from one_slack_ssvm import OneSlackSSVM
 from latent_structured_svm import LatentSSVM
 from heterogenous_crf import HCRF
 
-from test_weak_labeled import msrc_load
+from test_weak_labeled import load_msrc
 from test_weak_labeled import split_test_train
 from data_loader import load_syntetic
 
@@ -14,7 +14,7 @@ def get_all_from_mongo(dataset):
     cl = MongoClient()
     cl = cl['lSSVM']['base']
     exps = []
-    for meta in cl.find():
+    for meta in cl.find({'dataset_name': dataset}):
         exps.append(meta)
     return exps
 

@@ -30,8 +30,8 @@ def plot_syntetic_full_weak():
     pl.errorbar([1, 2, 3, 4, 5], 1 - full_y,
                 yerr=[full_y_max - full_y, full_y - full_y_min], label='full')
     pl.xticks(np.arange(0, 6), x)
-    pl.title('C=0.01')
-    pl.xlabel('number of fully-labeled examples')
+    pl.title('Syntetic')
+    pl.xlabel('number of fully-labeled objects')
     pl.ylabel('hamming loss')
     pl.ylim([0, 1])
     pl.xlim([-0.1, 5.1])
@@ -96,6 +96,7 @@ def plot_heterogenous_per_iter(result):
     pl.plot(x, train_scores, c='r', label='train')
     pl.scatter(x, scores)
     pl.scatter(x, train_scores, c='r')
+    pl.ylabel('hamming loss')
     pl.xlabel('iteration')
     pl.xlim([-1, scores.size])
     pl.legend(loc='lower right')
