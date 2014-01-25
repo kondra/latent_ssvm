@@ -132,17 +132,17 @@ def save_msrc_hdf():
     areas = labels[:, 1]
     labels = labels[:, 0]
 
-    train_mask_20 = np.genfromtxt('../data/msrc/trainmasks/trainMaskX20.txt', dtype=np.int32)
-    train_mask_40 = np.genfromtxt('../data/msrc/trainmasks/trainMaskX40.txt', dtype=np.int32)
-    train_mask_80 = np.genfromtxt('../data/msrc/trainmasks/trainMaskX80.txt', dtype=np.int32)
-    train_mask_160 = np.genfromtxt('../data/msrc/trainmasks/trainMaskX160.txt', dtype=np.int32)
+    train_mask_20 = np.genfromtxt(base + 'msrc/trainmasks/trainMaskX20.txt', dtype=np.int32)
+    train_mask_40 = np.genfromtxt(base + 'msrc/trainmasks/trainMaskX40.txt', dtype=np.int32)
+    train_mask_80 = np.genfromtxt(base + 'msrc/trainmasks/trainMaskX80.txt', dtype=np.int32)
+    train_mask_160 = np.genfromtxt(base + 'msrc/trainmasks/trainMaskX160.txt', dtype=np.int32)
 
-    test_mask = np.genfromtxt('../data/msrc/features/testMask.txt', dtype=np.int32)
-    train_mask = np.genfromtxt('../data/msrc/features/trainMask.txt', dtype=np.int32)
-    valid_mask = np.genfromtxt('../data/msrc/features/validMask.txt', dtype=np.int32)
+    test_mask = np.genfromtxt(base + 'msrc/features/testMask.txt', dtype=np.int32)
+    train_mask = np.genfromtxt(base + 'msrc/features/trainMask.txt', dtype=np.int32)
+    valid_mask = np.genfromtxt(base + 'msrc/features/validMask.txt', dtype=np.int32)
 
     mapping = []
-    with open('../data/msrc/features/names.txt', 'r') as f:
+    with open(base + 'msrc/features/names.txt', 'r') as f:
         for line in f:
             mapping.append(line.split(' ')[-1].strip())
     mapping = np.array(mapping)
