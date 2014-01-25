@@ -18,7 +18,16 @@ MSRC_DATA_PATH = '../data/msrc/msrc.hdf5'
 
 
 def split_test_train(X, Y, n_full, n_train):
-    # splitting for syntetic dataset
+    # splitting syntetic dataset
+# binarization (for testing purposes
+#    for i in xrange(len(Y)):
+#        y = Y[i][:,0]
+#        labels = np.unique(y)
+#        i1 = np.random.randint(len(labels))
+#        i2 = np.random.randint(len(labels))
+#        y[y == labels[i1]] = labels[i2]
+#        Y[i][:,0] = y
+
     x_train = X[:n_train]
     y_train = [Label(y[:, 0].astype(np.int32), None, y[:, 1], True)
                for y in Y[:n_full]]
@@ -34,7 +43,8 @@ def split_test_train(X, Y, n_full, n_train):
     return x_train, y_train, y_train_full, x_test, y_test
 
 
-def msrc_load(n_full, n_train):
+def load_msrc(n_full, n_train):
+    # splitting MSRC dataset
     Xtrain, Ytrain_raw, Xtest, Ytest = load_msrc_hdf(MSRC_DATA_PATH)
     Ytest = [Label(y[:, 0].astype(np.int32), None, y[:, 1], True)
              for y in Ytest]
@@ -134,7 +144,7 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
     clf = LatentSSVM(base_clf, latent_iter=latent_iter, verbose=2,
                      tol=outer_tol, min_changes=min_changes, n_jobs=4)
 
-    Xtrain, Ytrain, Ytrain_full, Xtest, Ytest = msrc_load(n_full, n_train)
+    Xtrain, Ytrain, Ytrain_full, Xtest, Ytest = load_msrc(n_full, n_train)
 
     start = time()
     clf.fit(Xtrain, Ytrain, initialize=initialize, warm_start=warm_start)
