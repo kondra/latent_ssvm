@@ -193,8 +193,8 @@ class OneSlackSSVM(BaseSSVM):
             #initvals = {}
         #solution = cvxopt.solvers.qp(P, q, G, h, A, b, initvals=initvals)
 
-        import mosek
-        cvxopt.solvers.options['MOSEK'] = {mosek.iparam.log: 0}
+#        import mosek
+#        cvxopt.solvers.options['MOSEK'] = {mosek.iparam.log: 0}
 
         start_time = time()
         try:
