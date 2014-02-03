@@ -86,7 +86,12 @@ def infer_labels(x, wu, wp, z=None, y=None):
                             if y.full_labeled:
                                 E += np.sum(t!=y.full)
                             else:
-                                E += np.sum(np.abs(np.bincount(t) - y.weak))
+                                w1 = np.zeros(4)
+                                w2 = np.zeros(4)
+                                tw = np.bincount(t)
+                                w1[:tw.shape[0]] = tw
+                                w2[:y.weak.shape[0]] = y.weak
+                                E += np.sum(np.abs(w1 - w2))
                         if E > E_max:
                             t_max = t
                             E_max = E
@@ -138,7 +143,6 @@ def load_simple_dataset(filename='simple_data.pkl'):
     y_test = [Label(y, None, True) for y in Y[400:]]
     y_train = y_train_full[:100]
     y_train += [Label(None, np.bincount(y.full), False) for y in y_train_full[100:]]
-#    y_train = [Label(None, np.bincount(y.full), False) for y in y_train_full]
 
     for y in y_train:
         assert(np.all(np.bincount(y.full) == y.weak))
@@ -152,8 +156,8 @@ class SimpleMRF(StructuredModel):
         self.inference_calls = 0
 
     def latent(self, x, y, w):   
-#        if y.full_labeled:
-#            return y
+        if y.full_labeled:
+            return y
         wu = w[:3]
         wp = np.reshape(w[3:], (3,3))
         return Label(infer_labels(x, wu, wp, y.weak), y.weak, False) 
@@ -175,7 +179,13 @@ class SimpleMRF(StructuredModel):
         return psi
 
     def loss(self, y, y_hat):
-        return np.sum(y.full != y_hat.full)
+        if y.full_labeled:
+            return np.sum(y.full != y_hat.full)
+        w1 = np.zeros(4)
+        w2 = np.zeros(4)
+        w1[:y_hat.weak.shape[0]] = y_hat.weak
+        w2[:y.weak.shape[0]] = y.weak
+        return np.sum(np.abs(w1 - w2))
 
     def loss_augmented_inference(self, x, y, w, relaxed=False, return_energy=False):
         wu = w[:3]
@@ -193,7 +203,7 @@ def test_simple_dataset(max_iter=1000, C=0.001, latent_iter=10, min_changes=0):
     base_clf = OneSlackSSVM(crf, max_iter=max_iter, C=C, verbose=2,
                             n_jobs=4, tol=1e-3)
     clf = LatentSSVM(base_clf, latent_iter=latent_iter, verbose=2, min_changes=min_changes,
-                     n_jobs=4, tol=1e-3)
+                     n_jobs=4, tol=1e-9)
 
     x_train, y_train_full, y_train, x_test, y_test = load_simple_dataset()
 
