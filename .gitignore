@@ -1,5 +1,6 @@
 *.swp
 *.pyc
+*.pkl
 results
 models
 notebooks
