@@ -62,7 +62,7 @@ class ExperimentResult(object):
         f.close()
 
     def save_meta(self):
-        client = MongoClient()
+        client = MongoClient('localhost', 27018)
         client['lSSVM']['base'].insert(self.meta)
         client.disconnect()
 
@@ -74,7 +74,7 @@ class ExperimentResult(object):
 
     @staticmethod
     def load(exp_id):
-        client = MongoClient()
+        client = MongoClient('localhost', 27018)
         meta = client['lSSVM']['base'].find_one({'id' : exp_id})
         f = h5py.File(path_to_datafile, 'r', libver='latest')
         grp = f[meta[u'dataset_name']][exp_id]
