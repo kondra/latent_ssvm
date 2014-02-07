@@ -6,6 +6,7 @@ from pystruct.models.base import StructuredModel
 
 from one_slack_ssvm import OneSlackSSVM
 from latent_structured_svm import LatentSSVM
+from results import ExperimentResult, experiment
 
 def generate_sample(w, max_iter=1000, temp=0.125, a=2):
     x = np.random.uniform(0,1,size=(5,3))
@@ -104,6 +105,7 @@ class Label(object):
         self.full = full
         self.weak = weak
         self.full_labeled = full_labeled
+        self.weights = np.ones(5)
         if self.full is None and self.weak is None:
             raise ValueError("You should specify full or weak labels")
         if self.weak is None:
@@ -198,12 +200,16 @@ class SimpleMRF(StructuredModel):
         return Label(infer_labels(x, wu, wp), None, True)
 
 
-def test_simple_dataset(max_iter=1000, C=0.001, latent_iter=10, min_changes=0):
+@experiment
+def test_simple_dataset(max_iter=1000, C=0.1, latent_iter=10, min_changes=0,
+                        inner_tol=1e-5, outer_tol=1e-5):
+    meta_data = locals()
+
     crf = SimpleMRF()
     base_clf = OneSlackSSVM(crf, max_iter=max_iter, C=C, verbose=2,
-                            n_jobs=4, tol=1e-3)
-    clf = LatentSSVM(base_clf, latent_iter=latent_iter, verbose=2, min_changes=min_changes,
-                     n_jobs=4, tol=1e-9)
+                            n_jobs=4, tol=inner_tol)
+    clf = LatentSSVM(base_clf, latent_iter=latent_iter, verbose=2,
+                     min_changes=min_changes, n_jobs=4, tol=outer_tol)
 
     x_train, y_train_full, y_train, x_test, y_test = load_simple_dataset()
 
@@ -211,7 +217,40 @@ def test_simple_dataset(max_iter=1000, C=0.001, latent_iter=10, min_changes=0):
     clf.fit(x_train, y_train)
     stop = time()
 
-    return clf
+    time_elapsed = stop - start
+
+    train_score = clf.score(x_train, y_train_full)
+    test_score = clf.score(x_test, y_test)
+
+    print '============================================================'
+    print 'Score on train set: %f' % train_score
+    print 'Score on test set: %f' % test_score
+    print 'Norm of weight vector: |w|=%f' % np.linalg.norm(clf.w)
+    print 'Elapsed time: %f s' % time_elapsed
+
+    test_scores = []
+    for score in clf.staged_score(x_test, y_test):
+        test_scores.append(score)
+
+    train_scores = []
+    for score in clf.staged_score(x_train, y_train_full):
+        train_scores.append(score)
+
+    raw_scores = []
+    for score in clf.staged_score2(x_train, y_train):
+        raw_scores.append(score)
+
+    exp_data = clf._get_data()
+    exp_data['test_scores'] = np.array(test_scores)
+    exp_data['train_scores'] = np.array(train_scores)
+    exp_data['raw_scores'] = np.array(raw_scores)
+
+    meta_data['dataset_name'] = 'toy'
+    meta_data['annotation_type'] = 'area'
+    meta_data['label_type'] = 'full+weak'
+    meta_data['time_elapsed'] = time_elapsed
+
+    return ExperimentResult(exp_data, meta_data)
 
 if __name__ == '__main__':
-    clf = test_simple_dataset()
+    test_simple_dataset('toy ds, c=1', C=1)
