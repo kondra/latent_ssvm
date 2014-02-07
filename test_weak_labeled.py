@@ -75,8 +75,9 @@ def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
 
     crf = HCRF(n_states=10, n_features=10, n_edge_features=2, alpha=alpha,
                inference_method='gco', n_iter=n_inference_iter)
-    base_clf = OneSlackSSVM(crf, max_iter=max_iter, C=C, verbose=0,
-                            tol=inner_tol, n_jobs=4, inference_cache=inference_cache,
+    base_clf = OneSlackSSVM(crf, verbose=2, n_jobs=4,
+                            max_iter=max_iter, tol=inner_tol, C=C,
+                            inference_cache=inference_cache,
                             inactive_window=inactive_window,
                             inactive_threshold=inactive_threshold)
     clf = LatentSSVM(base_clf, latent_iter=latent_iter, verbose=2,
@@ -138,7 +139,8 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
     crf = HCRF(n_states=24, n_features=2028, n_edge_features=4, alpha=alpha,
                inference_method='gco', n_iter=n_inference_iter)
     base_clf = OneSlackSSVM(crf, max_iter=max_iter, C=C, verbose=0,
-                            tol=inner_tol, n_jobs=4, inference_cache=inference_cache,
+                            tol=inner_tol, n_jobs=4,
+                            inference_cache=inference_cache,
                             inactive_window=inactive_window,
                             inactive_threshold=inactive_threshold)
     clf = LatentSSVM(base_clf, latent_iter=latent_iter, verbose=2,
