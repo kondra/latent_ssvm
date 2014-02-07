@@ -190,15 +190,12 @@ class LatentSSVM(BaseSSVM):
     
                 Y = Y_new
 
-                latent_objective_0 = objective_primal(self.model, self.w_history_[-1],
-                                                     X, Y, self.C, 'one_slack', self.n_jobs)
+                latent_objective = objective_primal(self.model, w,
+                                                    X, Y, self.C, 'one_slack', self.n_jobs)
 
-                latent_objective = self.base_ssvm.fit(X, Y, only_objective=True,
-                                                      previous_w=self.w_history_[-1])
                 self.latent_objective_.append(latent_objective)
                 if self.verbose:
-                    print("Previous Latent SSVM objective: %f : %f" % (self.latent_objective_[-1],
-                          latent_objective_0))
+                    print("Previous Latent SSVM objective: %f" % latent_objective)
 
                 if not warm_start:
                     self.base_ssvm.fit(X, Y, warm_start=False, initialize=False, save_history=True)
@@ -252,6 +249,12 @@ class LatentSSVM(BaseSSVM):
             if self.verbose:
                 print('interrupted... finishing...')
             pass
+
+        Y_new = Parallel(n_jobs=self.n_jobs, verbose=0, max_nbytes=1e8)(
+            delayed(latent)(self.model, x, y, w) for x, y in zip(X, Y))
+        latent_objective = objective_primal(self.model, w, X, Y_new, self.C,
+                                            'one_slack', self.n_jobs)
+        self.latent_objective_.append(latent_objective)
 
         self.number_of_changes_ = np.array(self.number_of_changes_)
         self.w_history_ = np.array(self.w_history_)
