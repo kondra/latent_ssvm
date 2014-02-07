@@ -19,10 +19,13 @@ def inference_gco(unary_potentials, pairwise_potentials, edges, **kwargs):
     n_states = unary_potentials.shape[-1]
 
     pairwise_cost = {}
+    count = 0
     for i in xrange(0, pairwise_potentials.shape[0]):
         cost = pairwise_potentials[i, 0, 0]
-        if cost >= 0:
-            pairwise_cost[(edges[i, 0], edges[i, 1])] = cost
+        if cost < 0:
+            cost = 0
+            count += 1
+        pairwise_cost[(edges[i, 0], edges[i, 1])] = cost
 
     unary_potentials = (-1 * unary_potentials).copy()
 
@@ -31,7 +34,10 @@ def inference_gco(unary_potentials, pairwise_potentials, edges, **kwargs):
     else:
         y = cut_from_graph_gen_potts(unary_potentials, pairwise_cost)
 
-    return y[0].reshape(shape_org)
+    if 'return_energy' in kwargs and kwargs['return_energy']:
+        return y[0].reshape(shape_org), y[1]
+    else:
+        return y[0].reshape(shape_org)
 
 
 class HCRF(StructuredModel):
@@ -171,8 +177,8 @@ class HCRF(StructuredModel):
             loss = 0
             c = np.sum(y.weights) / float(self.n_states)
             for label in xrange(0, self.n_states):
-                if label in y.weak and not np.any(y_hat.full == label):
-                    loss += c
+                if label in y.weak and np.any(y_hat.full == label):
+                    loss -= c
                 elif label not in y.weak:
                     loss += np.sum(y.weights * (y_hat.full == label))
             return loss * self.alpha
@@ -193,8 +199,12 @@ class HCRF(StructuredModel):
             loss_augment_weighted_unaries(unary_potentials, y.full,
                                           y.weights.astype(np.double))
 
-            h = inference_gco(unary_potentials, pairwise_potentials, edges, n_iter=self.n_iter)
-            return Label(h, None, y.weights, True)
+            h = inference_gco(unary_potentials, pairwise_potentials, edges, n_iter=self.n_iter,
+                              return_energy=True)
+
+            y_ret = Label(h[0], None, y.weights, True)
+
+            return y_ret
         else:
             # this is weak labeled example
             # use pygco with label costs
@@ -207,10 +217,13 @@ class HCRF(StructuredModel):
                     unary_potentials[:, label] += y.weights
 
             pairwise_cost = {}
+            count = 0
             for i in xrange(0, edges.shape[0]):
                 cost = pairwise_potentials[i, 0, 0]
-                if cost >= 0:
-                    pairwise_cost[(edges[i, 0], edges[i, 1])] = cost
+                if cost < 0:
+                    cost = 0
+                    count += 1
+                pairwise_cost[(edges[i, 0], edges[i, 1])] = cost
 
             from pygco import cut_from_graph_gen_potts
             shape_org = unary_potentials.shape[:-1]
@@ -221,9 +234,15 @@ class HCRF(StructuredModel):
 
             h = cut_from_graph_gen_potts(unary_potentials, pairwise_cost,
                                          label_cost=label_cost, n_iter=self.n_iter)
-            h = h[0].reshape(shape_org)
 
-            return Label(h, None, y.weights, False)
+            y_ret = Label(h[0].reshape(shape_org), None, y.weights, False)
+
+            energy = np.dot(w, self.psi(x, y_ret)) + self.loss(y, y_ret)
+
+            if count == 0 and np.abs(energy + h[1]) > 1e-4:
+                print 'energy does not match: %f, %f, difference=%f' % (energy, -h[1], energy + h[1])
+
+            return y_ret
 
     def inference(self, x, w, relaxed=False, return_energy=False):
         """Inference for x using parameters w.
