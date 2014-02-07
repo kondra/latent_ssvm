@@ -500,7 +500,7 @@ class OneSlackSSVM(BaseSSVM):
                 # compute primal objective
                 last_slack = -np.dot(self.w, dpsi) + loss_mean
                 primal_objective = (self.C * len(X)
-                                    * np.max(last_slack, 0)
+                                    * max(last_slack, 0)
                                     + np.sum(self.w ** 2) / 2)
 
                 if only_objective:
