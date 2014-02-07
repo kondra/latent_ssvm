@@ -377,8 +377,7 @@ class OneSlackSSVM(BaseSSVM):
         return Y_hat, dpsi, loss_mean
 
     def fit(self, X, Y, constraints=None, warm_start=False,
-            initialize=True, save_history=False,
-            only_objective=False, previous_w=None):
+            initialize=True, save_history=False):
         """Learn parameters using cutting plane method.
 
         Parameters
@@ -436,9 +435,6 @@ class OneSlackSSVM(BaseSSVM):
 
         if save_history:
             self.w_history = []
-
-        if only_objective:
-            self.w = previous_w
 
         self.iterations_done = 0
         self.inference_calls = 0
@@ -502,9 +498,6 @@ class OneSlackSSVM(BaseSSVM):
                 primal_objective = (self.C * len(X)
                                     * max(last_slack, 0)
                                     + np.sum(self.w ** 2) / 2)
-
-                if only_objective:
-                    return primal_objective
 
                 self.primal_objective_curve_.append(primal_objective)
                 self.cached_constraint_.append(cached_constraint)

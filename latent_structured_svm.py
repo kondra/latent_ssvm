@@ -91,7 +91,7 @@ class LatentSSVM(BaseSSVM):
             self.inner_staged_inference = []
 
             # all data is fully labeled, quit
-            # it should not work!
+            # fixme: it should not work!
             if np.all([y.full_labeled for y in Y]):
                 self.base_ssvm.fit(X, Y)
                 self.w_history_ = np.array([self.base_ssvm.w])
@@ -368,7 +368,8 @@ class LatentSSVM(BaseSSVM):
             w = self.w_history_[i]
             Y = Parallel(n_jobs=self.n_jobs, verbose=0, max_nbytes=1e8)(
                 delayed(latent)(self.model, x, y, w) for x, y in zip(X, Y))
-            yield self.base_ssvm.fit(X, Y, only_objective=True, previous_w=w)
+            yield objective_primal(self.model, w, X, Y, self.C,
+                                   'one_slack', self.njobs)
 
     @property
     def model(self):
