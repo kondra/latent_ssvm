@@ -7,6 +7,7 @@
 import numpy as np
 from time import time
 
+from pystruct.utils import objective_primal
 from pystruct.learners.ssvm import BaseSSVM
 from joblib import Parallel, delayed
 
@@ -163,6 +164,11 @@ class LatentSSVM(BaseSSVM):
             w = self.w_history_[-1]
             start_time = time()
 
+# reset strong labels
+#        from simple_dataset import Label
+#        Y_new = [Label(None, y.weak, False) for y in Y]
+#        Y = Y_new
+
         try:
             for iteration in xrange(begin, self.latent_iter):
                 if self.verbose:
@@ -184,11 +190,15 @@ class LatentSSVM(BaseSSVM):
     
                 Y = Y_new
 
+                latent_objective_0 = objective_primal(self.model, self.w_history_[-1],
+                                                     X, Y, self.C, 'one_slack', self.n_jobs)
+
                 latent_objective = self.base_ssvm.fit(X, Y, only_objective=True,
                                                       previous_w=self.w_history_[-1])
                 self.latent_objective_.append(latent_objective)
                 if self.verbose:
-                    print("Previous Latent SSVM objective: %f" % self.latent_objective_[-1])
+                    print("Previous Latent SSVM objective: %f : %f" % (self.latent_objective_[-1],
+                          latent_objective_0))
 
                 if not warm_start:
                     self.base_ssvm.fit(X, Y, warm_start=False, initialize=False, save_history=True)
