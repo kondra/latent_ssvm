@@ -3,7 +3,7 @@ import pylab as pl
 
 import os
 
-from results import ExperimentResult
+import results
 
 # old legacy stuff
 
@@ -232,7 +232,10 @@ def plot_raw_scores(result, first_iter=1, save_dir=None):
     if save_dir is not None:
         pl.savefig(save_dir + 'raw_scores.png')
 
-def plot_all(result, save_dir=None):
+def plot_all(result, save=False):
+    save_dir = None
+    if save:
+        save_dir = os.path.join(results.working_directory, result.id)
     plot_scores(result, save_dir=save_dir)
     plot_raw_scores(result, save_dir=save_dir)
     plot_latent_objective(result, save_dir=save_dir)
