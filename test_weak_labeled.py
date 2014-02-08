@@ -124,6 +124,7 @@ def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
     meta_data['train_score'] = train_score
     meta_data['test_score'] = test_score
     meta_data['time_elapsed'] = time_elapsed
+    meta_data['iter_done'] = clf.iter_done
 
     return ExperimentResult(exp_data, meta_data)
 
@@ -185,5 +186,6 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
     meta_data['train_score'] = train_score
     meta_data['test_score'] = test_score
     meta_data['time_elapsed'] = time_elapsed
+    meta_data['iter_done'] = clf.iter_done
 
     return ExperimentResult(exp_data, meta_data)
