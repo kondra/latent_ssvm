@@ -139,7 +139,7 @@ def plot_inner_scores(result):
 
 # good plotting utils
 
-def plot_objectives(result, first_iter=1):
+def plot_objectives(result, first_iter=1, save_dir=None):
     objective = result.data['objective_curve'][first_iter:]
     primal_objective = result.data['primal_objective_curve'][first_iter:]
     ind = np.arange(first_iter, objective.shape[0] + first_iter)
@@ -152,7 +152,10 @@ def plot_objectives(result, first_iter=1):
     pl.legend(loc='upper right')
     pl.xticks(ind, ind)
 
-def plot_changes(result):
+    if save_dir is not None:
+        pl.savefig(save_dir + '/objectives.png')
+
+def plot_changes(result, save_dir=None):
     changes = result.data['changes']
     ind = np.arange(changes.shape[0])
     pl.figure(figsize=(5,5), dpi=96)
@@ -162,7 +165,10 @@ def plot_changes(result):
     pl.title('changes in inferred latent labelling')
     pl.xlabel('iteration')
 
-def plot_scores(result):
+    if save_dir is not None:
+        pl.savefig(save_dir + '/changes.png')
+
+def plot_scores(result, save_dir=None):
     test_scores =  result.data['test_scores']
     train_scores =  result.data['train_scores']
     ind = np.arange(test_scores.shape[0])
@@ -176,7 +182,10 @@ def plot_scores(result):
     pl.xticks(ind, ind)
     pl.legend(loc='lower right')
 
-def plot_inner_objectives(result):
+    if save_dir is not None:
+        pl.savefig(save_dir + '/scores.png')
+
+def plot_inner_objectives(result, save_dir=None):
     n_iter = result.data['w_history'].shape[0]
     for i in xrange(0, n_iter):
         objectives = get_objective_per_iter(result, i)
@@ -188,7 +197,10 @@ def plot_inner_objectives(result):
         pl.ylabel('log Objective')
         pl.title('SSVM objectives iteration %d' % i)
 
-def plot_latent_objective(result, first_iter=1, norm=False):
+        if save_dir is not None:
+            pl.savefig(save_dir + ('/inner_objective_%d.png' % i))
+
+def plot_latent_objective(result, first_iter=1, norm=False, save_dir=None):
     objective = result.data['latent_objective'][first_iter:]
     ind = np.arange(first_iter, objective.shape[0] + first_iter)
     w_norms = [0.5 * np.sum(w ** 2) for w in result.data['w_history'][first_iter:,:]]
@@ -201,7 +213,13 @@ def plot_latent_objective(result, first_iter=1, norm=False):
     pl.title('Latent SSVM objective')
     pl.legend(loc='upper right')
 
-def plot_raw_scores(result, first_iter=1):
+    if save_dir is not None:
+        if norm:
+            pl.savefig(save_dir + '/latent_objective_with_norm.png')
+        else:
+            pl.savefig(save_dir + '/latent_objective.png')
+
+def plot_raw_scores(result, first_iter=1, save_dir=None):
     pl.figure(figsize=(5,5))
     score = result.data['raw_scores'][first_iter:]
     ind = np.arange(first_iter, score.shape[0] + first_iter)
@@ -211,13 +229,17 @@ def plot_raw_scores(result, first_iter=1):
     pl.ylabel('kappa+delta')
     pl.title('Latent SSVM score (Kappa + Delta) on train set')
 
-def plot_all(result):
-    plot_scores(result)
-    plot_raw_scores(result)
-    plot_latent_objective(result)
-    plot_objectives(result)
-    plot_changes(result)
-    plot_inner_objectives(result)
+    if save_dir is not None:
+        pl.savefig(save_dir + 'raw_scores.png')
+
+def plot_all(result, save_dir=None):
+    plot_scores(result, save_dir=save_dir)
+    plot_raw_scores(result, save_dir=save_dir)
+    plot_latent_objective(result, save_dir=save_dir)
+    plot_latent_objective(result, norm=True, save_dir=save_dir)
+    plot_objectives(result, save_dir=save_dir)
+    plot_changes(result, save_dir=save_dir)
+    plot_inner_objectives(result, save_dir=save_dir)
 
 # auxilary utils
 

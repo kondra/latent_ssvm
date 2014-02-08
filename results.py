@@ -17,6 +17,7 @@ from time import time
 
 path_to_repo = '/home/dmitry/Documents/Thesis/latent_ssvm'
 working_directory = '/home/dmitry/ExtDocuments/Thesis/experiments'
+tmp_directory = '/home/dmitry/ExtDocuments/Thesis/tmp'
 
 
 class experiment(object):
@@ -26,7 +27,7 @@ class experiment(object):
     def __call__(self, description, *args, **kwargs):
         result = None
         f = tempfile.NamedTemporaryFile(suffix='.log',
-                                        dir=working_directory,
+                                        dir=tmp_directory,
                                         delete=False)
         save_stdout = sys.stdout
         sys.stdout = f
@@ -98,15 +99,14 @@ class ExperimentResult(object):
         path_to_datafile = os.path.join(working_directory, exp_id, 'data.hdf5')
         path_to_metafile = os.path.join(working_directory, exp_id, 'meta.json')
         if not os.path.exists(path_to_datafile):
-            return load_old(exp_id)
+            return self.load_old(exp_id)
         with open(path_to_metafile, 'r') as f:
             meta = json.load(f)
-        f = h5py.File(path_to_datafile, 'r', libver='latest')
-        data = {}
-        for k in grp.keys():
-            data[k] = np.empty(grp[k].shape)
-            f[k].read_direct(data[k])
-        f.close()
+        with h5py.File(path_to_datafile, 'r', libver='latest') as f:
+            data = {}
+            for k in f.keys():
+                data[k] = np.empty(f[k].shape)
+                f[k].read_direct(data[k])
         return ExperimentResult(data, meta, is_new=False)
 
     @staticmethod
@@ -114,7 +114,7 @@ class ExperimentResult(object):
         client = MongoClient('localhost', 27018)
         meta = client['lSSVM']['base'].find_one({'id' : exp_id})
 
-        path_to_datafile = '/home/dmitry/Documents/Thesis/latent_ssvm/notebooks/experiment_data.hdf5'
+        path_to_datafile = '/home/dmitry/ExtDocuments/Thesis/experiment_data.hdf5'
         f = h5py.File(path_to_datafile, 'r', libver='latest')
         grp = f[meta[u'dataset_name']][exp_id]
         data = {}
