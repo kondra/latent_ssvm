@@ -89,6 +89,7 @@ class LatentSSVM(BaseSSVM):
             self.inner_objective = []
             self.inner_primal = []
             self.inner_staged_inference = []
+            self.inner_timestamps = []
 
             # all data is fully labeled, quit
             # fixme: it should not work!
@@ -145,6 +146,7 @@ class LatentSSVM(BaseSSVM):
             self.inner_objective += self.base_ssvm.objective_curve_
             self.inner_primal += self.base_ssvm.primal_objective_curve_
             self.inner_staged_inference += self.base_ssvm.staged_inference_calls
+            self.inner_timestamps += self.base_ssvm.timestamps_
 
             gap = self.primal_objective_curve_[-1] - self.objective_curve_[-1]
 
