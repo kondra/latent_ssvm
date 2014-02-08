@@ -255,6 +255,8 @@ class LatentSSVM(BaseSSVM):
         latent_objective = objective_primal(self.model, w, X, Y_new, self.C,
                                             'one_slack', self.n_jobs)
         self.latent_objective_.append(latent_objective)
+        if self.verbose:
+            print("Previous Latent SSVM objective: %f" % latent_objective)
 
         self.number_of_changes_ = np.array(self.number_of_changes_)
         self.w_history_ = np.array(self.w_history_)

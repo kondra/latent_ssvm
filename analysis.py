@@ -11,7 +11,7 @@ from data_loader import load_syntetic
 from pymongo import MongoClient
 
 def get_all_from_mongo(dataset):
-    cl = MongoClient()
+    cl = MongoClient('localhost', 27018)
     cl = cl['lSSVM']['base']
     exps = []
     for meta in cl.find({'dataset_name': dataset}):

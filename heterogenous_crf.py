@@ -35,7 +35,7 @@ def inference_gco(unary_potentials, pairwise_potentials, edges, **kwargs):
         y = cut_from_graph_gen_potts(unary_potentials, pairwise_cost)
 
     if 'return_energy' in kwargs and kwargs['return_energy']:
-        return y[0].reshape(shape_org), y[1]
+        return y[0].reshape(shape_org), y[1], count
     else:
         return y[0].reshape(shape_org)
 
@@ -83,7 +83,7 @@ class HCRF(StructuredModel):
         # forbid h that is incompoatible with y
         # by modifying unary potentials
         other_states = list(self.all_states - set(y.weak))
-        unary_potentials[:, other_states] = -1000
+        unary_potentials[:, other_states] = -100000000
         pairwise_potentials = self._get_pairwise_potentials(x, w)
         edges = self._get_edges(x)
         h = inference_gco(unary_potentials, pairwise_potentials, edges, n_iter=self.n_iter)
@@ -203,6 +203,13 @@ class HCRF(StructuredModel):
                               return_energy=True)
 
             y_ret = Label(h[0], None, y.weights, True)
+
+            count = h[2]
+            energy = np.dot(w, self.psi(x, y_ret)) + self.loss(y, y_ret)
+
+            if count == 0 and np.abs(energy + h[1]) > 1e-4:
+                print 'FULL: energy does not match: %f, %f, difference=%f' % (energy, -h[1],
+                                                                              energy + h[1])
 
             return y_ret
         else:

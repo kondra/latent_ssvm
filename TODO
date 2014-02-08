@@ -6,7 +6,7 @@
 * partially DONE: write docstring for LatentSSVM class
 * DONE: add support for sparse features
 * profile code
-* remove dependency from inference dispatch
+* DONE: remove dependency from inference dispatch
 * DONE: implement smart loader for MSRC dataset, store data in hdf5
 * add support for task scheduling (using celery or redis queue)
 * implement smart logging mechanism, possibly with backend in db

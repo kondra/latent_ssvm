@@ -138,8 +138,8 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
 
     crf = HCRF(n_states=24, n_features=2028, n_edge_features=4, alpha=alpha,
                inference_method='gco', n_iter=n_inference_iter)
-    base_clf = OneSlackSSVM(crf, max_iter=max_iter, C=C, verbose=0,
-                            tol=inner_tol, n_jobs=4,
+    base_clf = OneSlackSSVM(crf, verbose=2, n_jobs=4,
+                            tol=inner_tol, max_iter=max_iter, C=C,
                             inference_cache=inference_cache,
                             inactive_window=inactive_window,
                             inactive_threshold=inactive_threshold)
