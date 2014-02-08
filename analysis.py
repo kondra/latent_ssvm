@@ -151,13 +151,3 @@ def compute_latent_objective_per_iter(result):
 
     return result
 
-def get_objective_per_iter(result, iteration, t):
-    sz = result.data['inner_sz'] + 1
-
-    begin = np.sum(sz[:iteration])
-    end = begin + sz[iteration]
-
-    if t == 1:
-        return result.data['inner_objective'][begin:end]
-    else:
-        return result.data['inner_primal'][begin:end]

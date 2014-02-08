@@ -5,6 +5,7 @@ import os
 
 from results import ExperimentResult
 
+# old legacy stuff
 
 def plot_syntetic_full_weak():
     # full + weak plotter for syntetic data
@@ -124,8 +125,8 @@ def plot_inner_scores(result):
     test_scores = result.data['inner_test_scores']
     train_scores = result.data['inner_train_scores']
     acc = 0
-    pl.rc('text', usetex=True)
-    pl.rc('font', family='serif')
+#    pl.rc('text', usetex=True)
+#    pl.rc('font', family='serif')
     pl.figure(figsize=(5, 5 * n_iter))
     for i in xrange(0, n_iter):
         pl.subplot(n_iter,1,i+1)
@@ -136,36 +137,95 @@ def plot_inner_scores(result):
         pl.xlabel('iteration')
         acc += sizes[i]
 
+# good plotting utils
+
+def plot_objectives(result, first_iter=1):
+    objective = result.data['objective_curve'][first_iter:]
+    primal_objective = result.data['primal_objective_curve'][first_iter:]
+    ind = np.arange(first_iter, objective.shape[0] + first_iter)
+
+    pl.figure(figsize=(5,5), dpi=96)
+    pl.plot(ind, primal_objective, label='primal')
+    pl.plot(ind, objective, c='r', label='cutting-plane')
+    pl.title('objective')
+    pl.xlabel('iteration')
+    pl.legend(loc='upper right')
+    pl.xticks(ind, ind)
+
+def plot_changes(result):
+    changes = result.data['changes']
+    ind = np.arange(changes.shape[0])
+    pl.figure(figsize=(5,5), dpi=96)
+
+    pl.plot(ind, changes)
+    pl.xticks(ind, ind)
+    pl.title('changes in inferred latent labelling')
+    pl.xlabel('iteration')
+
+def plot_scores(result):
+    test_scores =  result.data['test_scores']
+    train_scores =  result.data['train_scores']
+    ind = np.arange(test_scores.shape[0])
+
+    pl.figure(figsize=(5, 5), dpi=96)
+    pl.title('score')
+    pl.plot(ind, test_scores, label='test')
+    pl.plot(ind, train_scores, c='r', label='train')
+    pl.ylabel('hamming loss')
+    pl.xlabel('iteration')
+    pl.xticks(ind, ind)
+    pl.legend(loc='lower right')
+
 def plot_inner_objectives(result):
     n_iter = result.data['w_history'].shape[0]
-    sizes = result.data['inner_sz']
-    inner_primal = result.data['inner_primal']
-    inner_objective = result.data['inner_objective']
-    acc = 0
-    pl.rc('text', usetex=True)
-    pl.rc('font', family='serif')
-    pl.figure(figsize=(5, 5 * n_iter))
     for i in xrange(0, n_iter):
-        pl.subplot(n_iter,1,i+1)
-        pl.plot(inner_primal[acc:acc+sizes[i]], label='primal')
-        pl.plot(inner_objective[acc:acc+sizes[i]], c='r', label='cutting-plane')
+        objectives = get_objective_per_iter(result, i)
+        pl.figure(figsize=(5, 5))
+        pl.plot(np.log(objectives['primal']), label='primal')
+        pl.plot(np.log(objectives['cutting-plane']), c='r', label='cutting-plane')
         pl.legend(loc='upper right')
         pl.xlabel('iteration')
-        acc += sizes[i]
+        pl.ylabel('log Objective')
+        pl.title('SSVM objectives iteration %d' % i)
 
-def plot_latent_objective(result, first_iter=0):
+def plot_latent_objective(result, first_iter=1, norm=False):
     objective = result.data['latent_objective'][first_iter:]
     ind = np.arange(first_iter, objective.shape[0] + first_iter)
+    w_norms = [0.5 * np.sum(w ** 2) for w in result.data['w_history'][first_iter:,:]]
     pl.figure(figsize=(5,5))
-    pl.plot(ind, objective)
+    pl.plot(ind, objective, label='objective')
+    if norm:
+        pl.plot(ind, w_norms, c='r', label='w norm')
     pl.xticks(ind, ind)
     pl.xlabel('iteration')
-    pl.ylabel('Objective')
     pl.title('Latent SSVM objective')
+    pl.legend(loc='upper right')
 
-def plot_score(result):
+def plot_raw_scores(result, first_iter=1):
     pl.figure(figsize=(5,5))
-    pl.plot(result.data['raw_scores'])
+    score = result.data['raw_scores'][first_iter:]
+    ind = np.arange(first_iter, score.shape[0] + first_iter)
+    pl.plot(ind, score)
+    pl.xticks(ind, ind)
     pl.xlabel('iteration')
     pl.ylabel('kappa+delta')
-    pl.title('Latent SSVM score')
+    pl.title('Latent SSVM score (Kappa + Delta) on train set')
+
+def plot_all(result):
+    plot_scores(result)
+    plot_raw_scores(result)
+    plot_latent_objective(result)
+    plot_objectives(result)
+    plot_changes(result)
+    plot_inner_objectives(result)
+
+# auxilary utils
+
+def get_objective_per_iter(result, iteration):
+    sizes = result.data['inner_sz'] + 1
+
+    begin = np.sum(sizes[:iteration])
+    end = begin + sizes[iteration]
+
+    return {'cutting-plane' : result.data['inner_objective'][begin:end],
+            'primal' : result.data['inner_primal'][begin:end]}
