@@ -200,18 +200,30 @@ def plot_inner_objectives(result, save_dir=None):
         if save_dir is not None:
             pl.savefig(save_dir + ('/inner_objective_%d.png' % i))
 
+def plot_w_norm(result, first_iter=1, save_dir=None):
+    w_norms = [0.5 * np.sum(w ** 2) for w in result.data['w_history'][first_iter:,:]]
+    ind = np.arange(first_iter, result.data['w_history'].shape[0] + first_iter)
+    pl.figure(figsize=(5,5))
+    pl.plot(ind, w_norms)
+    pl.xticks(ind, ind)
+    pl.xlabel('iteration')
+    pl.title('0.5 |w|^2')
+
+    if save_dir is not None:
+        pl.savefig(save_dir + '/w_norm.png')
+
 def plot_latent_objective(result, first_iter=1, norm=False, save_dir=None):
     objective = result.data['latent_objective'][first_iter:]
     ind = np.arange(first_iter, objective.shape[0] + first_iter)
-    w_norms = [0.5 * np.sum(w ** 2) for w in result.data['w_history'][first_iter:,:]]
     pl.figure(figsize=(5,5))
     pl.plot(ind, objective, label='objective')
     if norm:
+        w_norms = [0.5 * np.sum(w ** 2) for w in result.data['w_history'][first_iter:,:]]
         pl.plot(ind, w_norms, c='r', label='w norm')
+        pl.legend(loc='right')
     pl.xticks(ind, ind)
     pl.xlabel('iteration')
     pl.title('Latent SSVM objective')
-    pl.legend(loc='upper right')
 
     if save_dir is not None:
         if norm:
@@ -239,7 +251,7 @@ def plot_all(result, save=False):
     plot_scores(result, save_dir=save_dir)
     plot_raw_scores(result, save_dir=save_dir)
     plot_latent_objective(result, save_dir=save_dir)
-    plot_latent_objective(result, norm=True, save_dir=save_dir)
+    plot_w_norm(result, save_dir=save_dir)
     plot_objectives(result, save_dir=save_dir)
     plot_changes(result, save_dir=save_dir)
     plot_inner_objectives(result, save_dir=save_dir)
