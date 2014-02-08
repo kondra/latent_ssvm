@@ -2,7 +2,7 @@ import numpy as np
 import scipy.sparse as sps
 import h5py
 
-base = '../data/'
+base = '/home/dmitry/Documents/Thesis/data/'
 
 
 def load_msrc(dataset):

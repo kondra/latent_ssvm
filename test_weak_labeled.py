@@ -12,7 +12,7 @@ from data_loader import load_msrc_weak_train_mask
 from label import Label
 from results import ExperimentResult, experiment
 
-MSRC_DATA_PATH = '../data/msrc/msrc.hdf5'
+MSRC_DATA_PATH = '/home/dmitry/Documents/Thesis/data/msrc/msrc.hdf5'
 
 # testing with weakly labeled train set
 
