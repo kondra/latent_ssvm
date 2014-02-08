@@ -5,14 +5,14 @@
 import numpy as np
 
 from pystruct.models.base import StructuredModel
-from pystruct.models.utils import loss_augment_weighted_unaries
 
 from sklearn.utils.extmath import safe_sparse_dot
 
 from label import Label
 
 
-def inference_gco(unary_potentials, pairwise_potentials, edges, **kwargs):
+def inference_gco(unary_potentials, pairwise_potentials, edges,
+                  label_costs=None, **kwargs):
     from pygco import cut_from_graph_gen_potts
 
     shape_org = unary_potentials.shape[:-1]
@@ -21,18 +21,18 @@ def inference_gco(unary_potentials, pairwise_potentials, edges, **kwargs):
     pairwise_cost = {}
     count = 0
     for i in xrange(0, pairwise_potentials.shape[0]):
-        cost = pairwise_potentials[i, 0, 0]
-        if cost < 0:
-            cost = 0
+        if pairwise_potentials[i, 0, 0] < 0:
             count += 1
-        pairwise_cost[(edges[i, 0], edges[i, 1])] = cost
+        pairwise_cost[(edges[i, 0], edges[i, 1])] = max(pairwise_potentials[i, 0, 0], 0)
 
-    unary_potentials = (-1 * unary_potentials).copy()
+    unary_potentials *= -1
 
     if 'n_iter' in kwargs:
-        y = cut_from_graph_gen_potts(unary_potentials, pairwise_cost, n_iter=kwargs['n_iter'])
+        y = cut_from_graph_gen_potts(unary_potentials, pairwise_cost, 
+                                     label_cost=label_costs, n_iter=kwargs['n_iter'])
     else:
-        y = cut_from_graph_gen_potts(unary_potentials, pairwise_cost)
+        y = cut_from_graph_gen_potts(unary_potentials, pairwise_cost,
+                                     label_cost=label_costs)
 
     if 'return_energy' in kwargs and kwargs['return_energy']:
         return y[0].reshape(shape_org), y[1], count
@@ -76,6 +76,9 @@ class HCRF(StructuredModel):
     def _get_features(self, x):
         return x[0]
 
+    def _get_edge_features(self, x):
+        return x[2]
+
     def latent(self, x, y, w):
         if y.full_labeled:
             return y
@@ -83,7 +86,7 @@ class HCRF(StructuredModel):
         # forbid h that is incompoatible with y
         # by modifying unary potentials
         other_states = list(self.all_states - set(y.weak))
-        unary_potentials[:, other_states] = -100000000
+        unary_potentials[:, other_states] = -1000000
         pairwise_potentials = self._get_pairwise_potentials(x, w)
         edges = self._get_edges(x)
         h = inference_gco(unary_potentials, pairwise_potentials, edges, n_iter=self.n_iter)
@@ -111,10 +114,10 @@ class HCRF(StructuredModel):
         """
         self._check_size_w(w)
         self._check_size_x(x)
-        edge_features = x[2]
+        edge_features = self._get_edge_features(x)
         pairwise = np.asarray(w[self.n_states * self.n_features:])
         pairwise = pairwise.reshape(self.n_edge_features, -1)
-        pairwise = np.dot(edge_features, pairwise)
+        pairwise = np.dot(edge_features.astype(np.float64), pairwise)
         res = np.zeros((edge_features.shape[0], self.n_states, self.n_states))
         for i in range(edge_features.shape[0]):
             res[i, :, :] = np.diag(np.repeat(pairwise[i], self.n_states))
@@ -138,7 +141,7 @@ class HCRF(StructuredModel):
         """
         self._check_size_w(w)
         self._check_size_x(x)
-        features, edges = self._get_features(x), self._get_edges(x)
+        features = self._get_features(x)
         unary_params = w[:self.n_states * self.n_features].reshape(
             self.n_states, self.n_features)
         result = safe_sparse_dot(features, unary_params.T, dense_output=True)
@@ -147,8 +150,8 @@ class HCRF(StructuredModel):
     def psi(self, x, y):
         self._check_size_x(x)
         features, edges = self._get_features(x), self._get_edges(x)
+        edge_features = self._get_edge_features(x)
         n_nodes = features.shape[0]
-        edge_features = x[2]
 
         full_labeled = y.full_labeled
 
@@ -156,13 +159,14 @@ class HCRF(StructuredModel):
         y = y.reshape(n_nodes)
         gx = np.ogrid[:n_nodes]
 
-        unary_marginals = np.zeros((n_nodes, self.n_states), dtype=np.int)
+        unary_marginals = np.zeros((n_nodes, self.n_states), dtype=np.float64)
         gx = np.ogrid[:n_nodes]
         unary_marginals[gx, y] = 1
 
-        pw = np.sum(edge_features[y[edges[:, 0]] == y[edges[:, 1]]], axis=0)
+        pw = np.sum(edge_features[y[edges[:, 0]] == y[edges[:, 1]]].astype(np.float64), axis=0)
 
-        unaries_acc = safe_sparse_dot(unary_marginals.T, features, dense_output=True)
+        unaries_acc = safe_sparse_dot(unary_marginals.T, features.astype(np.float64),
+                                      dense_output=True)
 
         psi_vector = np.hstack([unaries_acc.ravel(), pw.ravel()])
         if not full_labeled:
@@ -177,11 +181,22 @@ class HCRF(StructuredModel):
             loss = 0
             c = np.sum(y.weights) / float(self.n_states)
             for label in xrange(0, self.n_states):
-                if label in y.weak and np.any(y_hat.full == label):
-                    loss -= c
+                if label in y.weak and not np.any(y_hat.full == label):
+                    loss += c
                 elif label not in y.weak:
                     loss += np.sum(y.weights * (y_hat.full == label))
             return loss * self.alpha
+
+    def _kappa(self, y, y_hat):
+        # not true kappa, use this to debug
+        loss = 0
+        c = np.sum(y.weights) / float(self.n_states)
+        for label in xrange(0, self.n_states):
+            if label in y.weak and np.any(y_hat.full == label):
+                loss -= c
+            elif label not in y.weak:
+                loss += np.sum(y.weights * (y_hat.full == label))
+        return loss * self.alpha
 
     def loss_augmented_inference(self, x, y, w, relaxed=False,
                                  return_energy=False):
@@ -196,11 +211,13 @@ class HCRF(StructuredModel):
         edges = self._get_edges(x)
 
         if y.full_labeled:
-            loss_augment_weighted_unaries(unary_potentials, y.full,
-                                          y.weights.astype(np.double))
+            # loss augment unaries
+            for label in xrange(self.n_states):
+                mask = y.full != label
+                unary_potentials[mask, label] += y.weights[mask]
 
-            h = inference_gco(unary_potentials, pairwise_potentials, edges, n_iter=self.n_iter,
-                              return_energy=True)
+            h = inference_gco(unary_potentials, pairwise_potentials, edges,
+                              n_iter=self.n_iter, return_energy=True)
 
             y_ret = Label(h[0], None, y.weights, True)
 
@@ -215,38 +232,22 @@ class HCRF(StructuredModel):
         else:
             # this is weak labeled example
             # use pygco with label costs
-            label_cost = np.zeros(self.n_states)
+            label_costs = np.zeros(self.n_states)
             c = np.sum(y.weights) / float(self.n_states)
             for label in y.weak:
-                label_cost[label] = c
+                label_costs[label] = c * self.alpha
             for label in xrange(0, self.n_states):
                 if label not in y.weak:
-                    unary_potentials[:, label] += y.weights
+                    unary_potentials[:, label] += y.weights * self.alpha
 
-            pairwise_cost = {}
-            count = 0
-            for i in xrange(0, edges.shape[0]):
-                cost = pairwise_potentials[i, 0, 0]
-                if cost < 0:
-                    cost = 0
-                    count += 1
-                pairwise_cost[(edges[i, 0], edges[i, 1])] = cost
+            h = inference_gco(unary_potentials, pairwise_potentials, edges,
+                              label_costs, n_iter=self.n_iter, return_energy=True)
 
-            from pygco import cut_from_graph_gen_potts
-            shape_org = unary_potentials.shape[:-1]
+            y_ret = Label(h[0], None, y.weights, False)
 
-            unary_potentials = (-1 * unary_potentials).copy()
-            #unary_potentials = unary_potentials.reshape(-1, self.n_states)
-            #label_cost = label_cost.copy()
+            energy = np.dot(w, self.psi(x, y_ret)) + self._kappa(y, y_ret)
 
-            h = cut_from_graph_gen_potts(unary_potentials, pairwise_cost,
-                                         label_cost=label_cost, n_iter=self.n_iter)
-
-            y_ret = Label(h[0].reshape(shape_org), None, y.weights, False)
-
-            energy = np.dot(w, self.psi(x, y_ret)) + self.loss(y, y_ret)
-
-            if count == 0 and np.abs(energy + h[1]) > 1e-4:
+            if h[2] == 0 and np.abs(energy + h[1]) > 1e-4:
                 print 'energy does not match: %f, %f, difference=%f' % (energy, -h[1], energy + h[1])
 
             return y_ret
