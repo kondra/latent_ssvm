@@ -21,9 +21,9 @@ def inference_gco(unary_potentials, pairwise_potentials, edges,
     pairwise_cost = {}
     count = 0
     for i in xrange(0, pairwise_potentials.shape[0]):
-        if pairwise_potentials[i, 0, 0] < 0:
-            count += 1
-        pairwise_cost[(edges[i, 0], edges[i, 1])] = max(pairwise_potentials[i, 0, 0], 0)
+        count += np.sum(np.diag(pairwise_potentials[i, :]) < 0)
+        pairwise_cost[(edges[i, 0], edges[i, 1])] = list(np.maximum(
+            np.diag(pairwise_potentials[i, :]), 0))
 
     unary_potentials *= -1
 
@@ -55,7 +55,7 @@ class HCRF(StructuredModel):
         self.alpha = alpha
         self.n_iter = n_iter
         self.size_psi = (self.n_states * self.n_features +
-                         self.n_edge_features)
+                         self.n_states * self.n_edge_features)
 
     def _check_size_x(self, x):
         features = self._get_features(x)
@@ -120,7 +120,7 @@ class HCRF(StructuredModel):
         pairwise = np.dot(edge_features.astype(np.float64), pairwise)
         res = np.zeros((edge_features.shape[0], self.n_states, self.n_states))
         for i in range(edge_features.shape[0]):
-            res[i, :, :] = np.diag(np.repeat(pairwise[i], self.n_states))
+            res[i, :, :] = np.diag(pairwise[i, :])
         return res
 
     def _get_unary_potentials(self, x, w):
@@ -163,7 +163,10 @@ class HCRF(StructuredModel):
         gx = np.ogrid[:n_nodes]
         unary_marginals[gx, y] = 1
 
-        pw = np.sum(edge_features[y[edges[:, 0]] == y[edges[:, 1]]].astype(np.float64), axis=0)
+        pw = np.zeros((self.n_edge_features, self.n_states))
+        for label in xrange(self.n_states):
+            mask = (y[edges[:, 0]] == label) & (y[edges[:, 1]] == label)
+            pw[:, label] = np.sum(edge_features[mask].astype(np.float64), axis=0)
 
         unaries_acc = safe_sparse_dot(unary_marginals.T, features.astype(np.float64),
                                       dense_output=True)
