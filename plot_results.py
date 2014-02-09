@@ -202,7 +202,7 @@ def plot_inner_objectives(result, save_dir=None):
 
 def plot_w_norm(result, first_iter=1, save_dir=None):
     w_norms = [0.5 * np.sum(w ** 2) for w in result.data['w_history'][first_iter:,:]]
-    ind = np.arange(first_iter, result.data['w_history'].shape[0] + first_iter)
+    ind = np.arange(first_iter, len(w_norms) + first_iter)
     pl.figure(figsize=(5,5))
     pl.plot(ind, w_norms)
     pl.xticks(ind, ind)
@@ -247,7 +247,8 @@ def plot_raw_scores(result, first_iter=1, save_dir=None):
 def plot_all(result, save=False):
     save_dir = None
     if save:
-        save_dir = os.path.join(results.working_directory, result.id)
+        save_dir = os.path.join(results.working_directory, result.id, 'figures')
+        os.mkdir(save_dir)
     plot_scores(result, save_dir=save_dir)
     plot_raw_scores(result, save_dir=save_dir)
     plot_latent_objective(result, save_dir=save_dir)
