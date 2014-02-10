@@ -5,25 +5,6 @@ import h5py
 base = '/home/dmitry/Documents/Thesis/data/'
 
 
-def load_msrc(dataset):
-    # fast loader, you should use this
-    if dataset == 'train':
-        filename = base + 'msrc/train_data.npz'
-        npz = np.load(filename)
-        unary = npz['Xunary_train']
-        unary = [sps.csr_matrix(x) for x in unary]
-        return zip(unary,
-                   npz['edges_train'],
-                   npz['Xpair_train']), list(npz['Y_train'])
-    if dataset == 'test':
-        filename = base + 'msrc/test_data.npz'
-        npz = np.load(filename)
-        unary = npz['Xunary_test']
-        unary = [sps.csr_matrix(x) for x in unary]
-        return zip(unary,
-                   npz['edges_test'],
-                   npz['Xpair_test']), list(npz['Y_test'])
-
 def load_msrc_weak_train_mask(filename, n):
     f = h5py.File(filename, 'r', libver='latest')
     name = 'train_mask_%d' % n
@@ -32,11 +13,12 @@ def load_msrc_weak_train_mask(filename, n):
     f.close()
     return mask
 
+
 def load_msrc_hdf(filename):
     # hdf5 loader, the best
     f = h5py.File(filename, 'r', libver='latest')
     g_u = f['features']['unaries']
-    data = np.empty(g_u['data'].shape, dtype=np.float32)
+    data = np.empty(g_u['data'].shape, dtype=np.float64)
     indices = np.empty(g_u['indices'].shape, dtype=np.int32)
     indptr = np.empty(g_u['indptr'].shape, dtype=np.int32)
     g_u['data'].read_direct(data)
@@ -75,7 +57,7 @@ def load_msrc_hdf(filename):
     g_f['edges_num'].read_direct(edges_num)
     raw_edges = np.empty(g_f['edges'].shape, dtype=np.int32)
     g_f['edges'].read_direct(raw_edges)
-    raw_pairwise = np.empty(g_f['pairwise'].shape, dtype=np.float32)
+    raw_pairwise = np.empty(g_f['pairwise'].shape, dtype=np.float64)
     g_f['pairwise'].read_direct(raw_pairwise)
 
     edges = []
@@ -100,6 +82,26 @@ def load_msrc_hdf(filename):
     f.close()
 
     return Xtrain, Ytrain, Xtest, Ytest
+
+
+def load_msrc(dataset):
+    if dataset == 'train':
+        filename = base + 'msrc/train_data.npz'
+        npz = np.load(filename)
+        unary = npz['Xunary_train']
+        unary = [sps.csr_matrix(x) for x in unary]
+        return zip(unary,
+                   npz['edges_train'],
+                   npz['Xpair_train']), list(npz['Y_train'])
+    if dataset == 'test':
+        filename = base + 'msrc/test_data.npz'
+        npz = np.load(filename)
+        unary = npz['Xunary_test']
+        unary = [sps.csr_matrix(x) for x in unary]
+        return zip(unary,
+                   npz['edges_test'],
+                   npz['Xpair_test']), list(npz['Y_test'])
+
 
 def save_msrc_hdf():
     npz_test = np.load(base + 'msrc/test_data.npz')
@@ -182,4 +184,5 @@ def load_syntetic(dataset):
     npz = np.load(filename)
     # add superpixel area, which is one because pixel == superpixel in this dataset
     Y = [np.vstack([y, np.ones(y.size)]).T for y in list(npz['Y'])]
-    return list(npz['X']), Y
+    X = list(npz['X'])
+    return X, Y
