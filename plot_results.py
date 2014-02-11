@@ -242,7 +242,7 @@ def plot_raw_scores(result, first_iter=1, save_dir=None):
     pl.title('Latent SSVM score (Kappa + Delta) on train set')
 
     if save_dir is not None:
-        pl.savefig(save_dir + 'raw_scores.png')
+        pl.savefig(save_dir + '/raw_scores.png')
 
 def plot_all(result, save=False):
     save_dir = None
