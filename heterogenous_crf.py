@@ -117,7 +117,7 @@ class HCRF(StructuredModel):
         edge_features = self._get_edge_features(x)
         pairwise = np.asarray(w[self.n_states * self.n_features:])
         pairwise = pairwise.reshape(self.n_edge_features, -1)
-        pairwise = np.dot(edge_features.astype(np.float64), pairwise)
+        pairwise = np.dot(edge_features, pairwise)
         res = np.zeros((edge_features.shape[0], self.n_states, self.n_states))
         for i in range(edge_features.shape[0]):
             res[i, :, :] = np.diag(pairwise[i, :])
@@ -166,9 +166,9 @@ class HCRF(StructuredModel):
         pw = np.zeros((self.n_edge_features, self.n_states))
         for label in xrange(self.n_states):
             mask = (y[edges[:, 0]] == label) & (y[edges[:, 1]] == label)
-            pw[:, label] = np.sum(edge_features[mask].astype(np.float64), axis=0)
+            pw[:, label] = np.sum(edge_features[mask], axis=0)
 
-        unaries_acc = safe_sparse_dot(unary_marginals.T, features.astype(np.float64),
+        unaries_acc = safe_sparse_dot(unary_marginals.T, features,
                                       dense_output=True)
 
         psi_vector = np.hstack([unaries_acc.ravel(), pw.ravel()])
@@ -238,20 +238,20 @@ class HCRF(StructuredModel):
             label_costs = np.zeros(self.n_states)
             c = np.sum(y.weights) / float(self.n_states)
             for label in y.weak:
-                label_costs[label] = c * self.alpha
+                label_costs[label] = c
             for label in xrange(0, self.n_states):
                 if label not in y.weak:
-                    unary_potentials[:, label] += y.weights * self.alpha
+                    unary_potentials[:, label] += y.weights
 
             h = inference_gco(unary_potentials, pairwise_potentials, edges,
                               label_costs, n_iter=self.n_iter, return_energy=True)
 
             y_ret = Label(h[0], None, y.weights, False)
 
-            energy = np.dot(w, self.psi(x, y_ret)) + self._kappa(y, y_ret)
+#            energy = np.dot(w, self.psi(x, y_ret)) + self._kappa(y, y_ret)
 
-            if h[2] == 0 and np.abs(energy + h[1]) > 1e-4:
-                print 'energy does not match: %f, %f, difference=%f' % (energy, -h[1], energy + h[1])
+#            if h[2] == 0 and np.abs(energy + h[1]) > 1e-4:
+#                print 'energy does not match: %f, %f, difference=%f' % (energy, -h[1], energy + h[1])
 
             return y_ret
 
