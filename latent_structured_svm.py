@@ -45,7 +45,9 @@ class LatentSSVM(BaseSSVM):
         self.n_jobs = n_jobs
         self.min_changes = min_changes
 
-    def fit(self, X, Y, initialize=True, continued=False, warm_start=False):
+    def fit(self, X, Y, initialize=True,
+            continued=False, warm_start=False,
+            save_inner_w=False):
         """Learn parameters using the concave-convex procedure.
 
         Parameters
@@ -69,6 +71,8 @@ class LatentSSVM(BaseSSVM):
             without restarting the method.
         """
 
+        self.save_inner_w = save_inner_w
+
         if not continued:
             w = np.zeros(self.model.size_psi)
             start_time = time()
@@ -84,7 +88,8 @@ class LatentSSVM(BaseSSVM):
             self.inference_calls_ = []
             self.latent_objective_ = []
 
-            self.inner_w = []
+            if self.save_inner_w:
+                self.inner_w = []
             self.inner_sz = []
             self.inner_objective = []
             self.inner_primal = []
@@ -124,7 +129,7 @@ class LatentSSVM(BaseSSVM):
                 old_max_iter = self.base_ssvm.max_iter
                 self.base_ssvm.max_iter = 10000
 
-            self.base_ssvm.fit(X1, Y1, save_history=True)
+            self.base_ssvm.fit(X1, Y1, save_history=self.save_inner_w)
 
             if warm_start:
                 self.base_ssvm.max_iter = old_max_iter
@@ -141,7 +146,8 @@ class LatentSSVM(BaseSSVM):
             self.primal_objective_curve_.append(self.base_ssvm.primal_objective_curve_[-1])
             self.inference_calls_.append(self.base_ssvm.inference_calls)
 
-            self.inner_w.append(self.base_ssvm.w_history)
+            if self.save_inner_w:
+                self.inner_w.append(self.base_ssvm.w_history)
             self.inner_sz.append(self.base_ssvm.w_history.shape[0])
             self.inner_objective += self.base_ssvm.objective_curve_
             self.inner_primal += self.base_ssvm.primal_objective_curve_
@@ -205,14 +211,15 @@ class LatentSSVM(BaseSSVM):
                     break
 
                 if not warm_start:
-                    self.base_ssvm.fit(X, Y, warm_start=False, initialize=False, save_history=True)
+                    self.base_ssvm.fit(X, Y, warm_start=False,
+                                       initialize=False, save_history=self.save_inner_w)
                 else:
                     if iteration > 0:
                         self.base_ssvm.fit(X, Y, warm_start=warm_start,
-                                           initialize=False, save_history=True)
+                                           initialize=False, save_history=self.save_inner_w)
                     else:
                         self.base_ssvm.fit(X, Y, warm_start=False,
-                                           initialize=False, save_history=True)
+                                           initialize=False, save_history=self.save_inner_w)
 
                 w = self.base_ssvm.w
 
@@ -226,7 +233,8 @@ class LatentSSVM(BaseSSVM):
                 self.primal_objective_curve_.append(self.base_ssvm.primal_objective_curve_[-1])
                 self.inference_calls_.append(self.base_ssvm.inference_calls)
 
-                self.inner_w.append(self.base_ssvm.w_history)
+                if self.save_inner_w:
+                    self.inner_w.append(self.base_ssvm.w_history)
                 self.inner_sz.append(self.base_ssvm.w_history.shape[0])
                 self.inner_objective += self.base_ssvm.objective_curve_
                 self.inner_primal += self.base_ssvm.primal_objective_curve_
@@ -288,7 +296,8 @@ class LatentSSVM(BaseSSVM):
 
         self.iter_done = self.w_history_.shape[0]
 
-        self.inner_w = np.vstack(self.inner_w)
+        if self.save_inner_w:
+            self.inner_w = np.vstack(self.inner_w)
         self.inner_sz = np.array(self.inner_sz)
         self.inner_primal = np.array(self.inner_primal)
         self.inner_objective = np.array(self.inner_objective)
@@ -310,7 +319,8 @@ class LatentSSVM(BaseSSVM):
         data['inference_calls'] = self.inference_calls_
         data['latent_objective'] = self.latent_objective_
 
-        data['inner_w'] = self.inner_w
+        if self.save_inner_w:
+            data['inner_w'] = self.inner_w
         data['inner_sz'] = self.inner_sz
         data['inner_objective'] = self.inner_objective
         data['inner_primal'] = self.inner_primal

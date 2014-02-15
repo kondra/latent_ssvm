@@ -134,7 +134,8 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
               max_iter=500, inner_tol=0.001, outer_tol=0.01, min_changes=0,
               initialize=True, alpha=0.1, n_inference_iter=5,
               inactive_window=50, inactive_threshold=1e-5,
-              warm_start=False, inference_cache=0):
+              warm_start=False, inference_cache=0,
+              save_inner_w=False):
     meta_data = locals()
 
     crf = HCRF(n_states=24, n_features=2028, n_edge_features=4, alpha=alpha,
@@ -150,7 +151,10 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
     Xtrain, Ytrain, Ytrain_full, Xtest, Ytest = load_msrc(n_full, n_train)
 
     start = time()
-    clf.fit(Xtrain, Ytrain, initialize=initialize, warm_start=warm_start)
+    clf.fit(Xtrain, Ytrain,
+            initialize=initialize,
+            warm_start=warm_start,
+            save_inner_w=save_inner_w)
     stop = time()
 
     train_score = clf.score(Xtrain, Ytrain_full)
