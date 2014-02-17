@@ -69,7 +69,8 @@ def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
                   max_iter=500, inner_tol=0.001, outer_tol=0.01, min_changes=0,
                   initialize=True, alpha=0.1, n_inference_iter=5,
                   inactive_window=50, inactive_threshold=1e-5,
-                  warm_start=False, inference_cache=0):
+                  warm_start=False, inference_cache=0,
+                  save_inner_w=False):
     # save parameters as meta
     meta_data = locals()
 
@@ -88,7 +89,9 @@ def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
         split_test_train(X, Y, n_full, n_train)
 
     start = time()
-    clf.fit(x_train, y_train, initialize=initialize, warm_start=warm_start)
+    clf.fit(x_train, y_train,
+            initialize=initialize, warm_start=warm_start,
+            save_inner_w=save_inner_w)
     stop = time()
 
     train_score = clf.score(x_train, y_train_full)

@@ -148,7 +148,7 @@ class LatentSSVM(BaseSSVM):
 
             if self.save_inner_w:
                 self.inner_w.append(self.base_ssvm.w_history)
-            self.inner_sz.append(self.base_ssvm.w_history.shape[0])
+            self.inner_sz.append(len(self.base_ssvm.objective_curve_))
             self.inner_objective += self.base_ssvm.objective_curve_
             self.inner_primal += self.base_ssvm.primal_objective_curve_
             self.inner_staged_inference += self.base_ssvm.staged_inference_calls
@@ -235,7 +235,7 @@ class LatentSSVM(BaseSSVM):
 
                 if self.save_inner_w:
                     self.inner_w.append(self.base_ssvm.w_history)
-                self.inner_sz.append(self.base_ssvm.w_history.shape[0])
+                self.inner_sz.append(len(self.base_ssvm.objective_curve_))
                 self.inner_objective += self.base_ssvm.objective_curve_
                 self.inner_primal += self.base_ssvm.primal_objective_curve_
                 self.inner_staged_inference += self.base_ssvm.staged_inference_calls

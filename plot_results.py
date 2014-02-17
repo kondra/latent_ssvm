@@ -248,7 +248,8 @@ def plot_all(result, save=False):
     save_dir = None
     if save:
         save_dir = os.path.join(results.working_directory, result.id, 'figures')
-        os.mkdir(save_dir)
+        if not os.path.exists(save_dir):
+            os.mkdir(save_dir)
     plot_scores(result, save_dir=save_dir)
     plot_raw_scores(result, save_dir=save_dir)
     plot_latent_objective(result, save_dir=save_dir)
