@@ -5,6 +5,7 @@
 import numpy as np
 
 from pystruct.models.base import StructuredModel
+from pystruct.inference import inference_ad3
 
 from sklearn.utils.extmath import safe_sparse_dot
 
@@ -35,7 +36,7 @@ def inference_gco(unary_potentials, pairwise_potentials, edges,
                                      label_cost=label_costs)
 
     if 'return_energy' in kwargs and kwargs['return_energy']:
-        return y[0].reshape(shape_org), y[1], count
+        return y[0].reshape(shape_org), y[1]
     else:
         return y[0].reshape(shape_org)
 
@@ -43,9 +44,9 @@ def inference_gco(unary_potentials, pairwise_potentials, edges,
 class HCRF(StructuredModel):
     def __init__(self, n_states=2, n_features=None, n_edge_features=1,
                  inference_method='gco', n_iter=5, alpha=1):
-        if inference_method != 'gco':
-            # only gco inference_method supported: we need label costs
-            raise NotImplementedError
+#        if inference_method != 'gco':
+#            # only gco inference_method supported: we need label costs
+#            raise NotImplementedError
         self.all_states = set(range(0, n_states))
         self.n_edge_features = n_edge_features
         self.n_states = n_states
@@ -54,7 +55,7 @@ class HCRF(StructuredModel):
         self.inference_calls = 0
         self.alpha = alpha
         self.n_iter = n_iter
-        self.size_psi = (self.n_states * self.n_features +
+        self.size_joint_feature = (self.n_states * self.n_features +
                          self.n_states * self.n_edge_features)
 
     def _check_size_x(self, x):
@@ -104,7 +105,7 @@ class HCRF(StructuredModel):
         x : tuple
             Instance Representation.
 
-        w : ndarray, shape=(size_psi,)
+        w : ndarray, shape=(size_joint_feature,)
             Weight vector for CRF instance.
 
         Returns
@@ -131,7 +132,7 @@ class HCRF(StructuredModel):
         x : tuple
             Instance Representation.
 
-        w : ndarray, shape=(size_psi,)
+        w : ndarray, shape=(size_joint_feature,)
             Weight vector for CRF instance.
 
         Returns
@@ -147,7 +148,7 @@ class HCRF(StructuredModel):
         result = safe_sparse_dot(features, unary_params.T, dense_output=True)
         return result
 
-    def psi(self, x, y):
+    def joint_feature(self, x, y):
         self._check_size_x(x)
         features, edges = self._get_features(x), self._get_edges(x)
         edge_features = self._get_edge_features(x)
@@ -156,28 +157,43 @@ class HCRF(StructuredModel):
         full_labeled = y.full_labeled
 
         y = y.full
-        y = y.reshape(n_nodes)
-        gx = np.ogrid[:n_nodes]
+        if isinstance(y, tuple):
+            unary_marginals, pw = y
+            unary_marginals = unary_marginals.reshape(n_nodes, self.n_states)
 
-        unary_marginals = np.zeros((n_nodes, self.n_states), dtype=np.float64)
-        gx = np.ogrid[:n_nodes]
-        unary_marginals[gx, y] = 1
+            pw_new = np.zeros((pw.shape[0], self.n_states))
+            for i in xrange(self.n_states):
+                pw_new[:, i] = pw[:, self.n_states * i + i]
 
-        pw = np.zeros((self.n_edge_features, self.n_states))
-        for label in xrange(self.n_states):
-            mask = (y[edges[:, 0]] == label) & (y[edges[:, 1]] == label)
-            pw[:, label] = np.sum(edge_features[mask], axis=0)
+            pw = np.dot(edge_features.T, pw_new)
+        else:
+            y = y.reshape(n_nodes)
+            gx = np.ogrid[:n_nodes]
+
+            unary_marginals = np.zeros((n_nodes, self.n_states), dtype=np.float64)
+            gx = np.ogrid[:n_nodes]
+            unary_marginals[gx, y] = 1
+
+            pw = np.zeros((self.n_edge_features, self.n_states))
+            for label in xrange(self.n_states):
+                mask = (y[edges[:, 0]] == label) & (y[edges[:, 1]] == label)
+                pw[:, label] = np.sum(edge_features[mask], axis=0)
 
         unaries_acc = safe_sparse_dot(unary_marginals.T, features,
                                       dense_output=True)
 
-        psi_vector = np.hstack([unaries_acc.ravel(), pw.ravel()])
+        joint_feature_vector = np.hstack([unaries_acc.ravel(), pw.ravel()])
         if not full_labeled:
-            psi_vector *= self.alpha
-        return psi_vector
+            joint_feature_vector *= self.alpha
+        return joint_feature_vector
 
     def loss(self, y, y_hat):
         if y.full_labeled:
+            if isinstance(y.full, tuple):
+                w = y.weights
+                y, y_hat = y.full, y_hat.full
+                return np.sum(w * (1 - y_hat[0:y.shape[0], y]))
+
             return np.sum(y.weights * (y.full != y_hat.full))
         else:
             # should use Kappa here
@@ -203,10 +219,6 @@ class HCRF(StructuredModel):
 
     def loss_augmented_inference(self, x, y, w, relaxed=False,
                                  return_energy=False):
-        # we do not support relaxed inference yet
-        relaxed = False
-        return_energy = False
-
         self.inference_calls += 1
         self._check_size_w(w)
         unary_potentials = self._get_unary_potentials(x, w)
@@ -219,17 +231,22 @@ class HCRF(StructuredModel):
                 mask = y.full != label
                 unary_potentials[mask, label] += y.weights[mask]
 
-            h = inference_gco(unary_potentials, pairwise_potentials, edges,
-                              n_iter=self.n_iter, return_energy=True)
+            if self.inference_method == 'gco':
+                h = inference_gco(unary_potentials, pairwise_potentials, edges,
+                                  n_iter=self.n_iter, return_energy=True)
 
-            y_ret = Label(h[0], None, y.weights, True)
+                y_ret = Label(h[0], None, y.weights, True)
+            elif self.inference_method == 'ad3':
+                h = inference_ad3(unary_potentials, pairwise_potentials, edges,
+                                 relaxed=relaxed, return_energy=False)
+                y_ret = Label(h, None, y.weights, True, relaxed)
 
-            count = h[2]
-            energy = np.dot(w, self.psi(x, y_ret)) + self.loss(y, y_ret)
-
-            if count == 0 and np.abs(energy + h[1]) > 1e-4:
-                print 'FULL: energy does not match: %f, %f, difference=%f' % (energy, -h[1],
-                                                                              energy + h[1])
+#            count = h[2]
+#            energy = np.dot(w, self.joint_feature(x, y_ret)) + self.loss(y, y_ret)
+#
+#            if count == 0 and np.abs(energy + h[1]) > 1e-4:
+#                print 'FULL: energy does not match: %f, %f, difference=%f' % (energy, -h[1],
+#                                                                              energy + h[1])
 
             return y_ret
         else:
@@ -248,7 +265,7 @@ class HCRF(StructuredModel):
 
             y_ret = Label(h[0], None, y.weights, False)
 
-#            energy = np.dot(w, self.psi(x, y_ret)) + self._kappa(y, y_ret)
+#            energy = np.dot(w, self.joint_feature(x, y_ret)) + self._kappa(y, y_ret)
 
 #            if h[2] == 0 and np.abs(energy + h[1]) > 1e-4:
 #                print 'energy does not match: %f, %f, difference=%f' % (energy, -h[1], energy + h[1])
@@ -259,7 +276,7 @@ class HCRF(StructuredModel):
         """Inference for x using parameters w.
 
         Finds (approximately)
-        armin_y np.dot(w, psi(x, y))
+        argmin_y np.dot(w, joint_feature(x, y))
         using self.inference_method.
 
 
@@ -272,7 +289,7 @@ class HCRF(StructuredModel):
             edges are an nd-array of shape (n_edges, 2)
             pairwise are an nd-array of shape (n_edges, n_states, n_states)
 
-        w : ndarray, shape=(size_psi,)
+        w : ndarray, shape=(size_joint_feature,)
             Parameters for the CRF energy function.
 
         relaxed : bool, default=False
@@ -288,9 +305,6 @@ class HCRF(StructuredModel):
             of variable assignments for x is returned.
 
         """
-        # we do not support relaxed inference yet
-        relaxed = False
-        return_energy = False
 
         self._check_size_w(w)
         self.inference_calls += 1
@@ -298,6 +312,13 @@ class HCRF(StructuredModel):
         pairwise_potentials = self._get_pairwise_potentials(x, w)
         edges = self._get_edges(x)
 
-        h = inference_gco(unary_potentials, pairwise_potentials, edges, n_iter=self.n_iter)
+        if self.inference_method == 'gco':
+            h = inference_gco(unary_potentials, pairwise_potentials,
+                              edges, n_iter=self.n_iter)
+            y_ret = Label(h, None, None, True)
+        elif self.inference_method == 'ad3':
+            h = inference_ad3(unary_potentials, pairwise_potentials, edges,
+                             relaxed=relaxed, return_energy=False)
+            y_ret = Label(h, None, None, True, relaxed)
 
-        return Label(h, None, None, True)
+        return y_ret

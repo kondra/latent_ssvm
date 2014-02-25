@@ -70,12 +70,12 @@ def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
                   initialize=True, alpha=0.1, n_inference_iter=5,
                   inactive_window=50, inactive_threshold=1e-5,
                   warm_start=False, inference_cache=0,
-                  save_inner_w=False):
+                  save_inner_w=False, inference_method='gco'):
     # save parameters as meta
     meta_data = locals()
 
     crf = HCRF(n_states=10, n_features=10, n_edge_features=2, alpha=alpha,
-               inference_method='gco', n_iter=n_inference_iter)
+               inference_method=inference_method, n_iter=n_inference_iter)
     base_clf = OneSlackSSVM(crf, verbose=2, n_jobs=4,
                             max_iter=max_iter, tol=inner_tol, C=C,
                             inference_cache=inference_cache,
@@ -138,11 +138,11 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
               initialize=True, alpha=0.1, n_inference_iter=5,
               inactive_window=50, inactive_threshold=1e-5,
               warm_start=False, inference_cache=0,
-              save_inner_w=False):
+              save_inner_w=False, inference_method='gco'):
     meta_data = locals()
 
     crf = HCRF(n_states=24, n_features=2028, n_edge_features=4, alpha=alpha,
-               inference_method='gco', n_iter=n_inference_iter)
+               inference_method=inference_method, n_iter=n_inference_iter)
     base_clf = OneSlackSSVM(crf, verbose=2, n_jobs=4,
                             tol=inner_tol, max_iter=max_iter, C=C,
                             inference_cache=inference_cache,

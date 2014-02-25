@@ -32,7 +32,7 @@ class LatentSSVM(BaseSSVM):
 
     Attributes
     ----------
-    w : nd-array, shape=(model.size_psi,)
+    w : nd-array, shape=(model.size_joint_feature,)
         The learned weights of the SVM.
     """
 
@@ -74,7 +74,7 @@ class LatentSSVM(BaseSSVM):
         self.save_inner_w = save_inner_w
 
         if not continued:
-            w = np.zeros(self.model.size_psi)
+            w = np.zeros(self.model.size_joint_feature)
             start_time = time()
             self.w_history_ = []
             self.number_of_iterations_ = []
