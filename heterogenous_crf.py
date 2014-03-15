@@ -206,6 +206,9 @@ class HCRF(StructuredModel):
                     loss += np.sum(y.weights * (y_hat.full == label))
             return loss * self.alpha
 
+    def max_loss(self, y):
+        return np.sum(y.weights)
+
     def _kappa(self, y, y_hat):
         # not true kappa, use this to debug
         loss = 0
