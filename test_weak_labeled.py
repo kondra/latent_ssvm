@@ -46,7 +46,8 @@ def split_test_train(X, Y, n_full, n_train):
 def load_msrc(n_full, n_train):
     # splitting MSRC dataset
     Xtrain, Ytrain_raw, Xtest, Ytest = load_msrc_hdf(MSRC_DATA_PATH)
-    Ytest = [Label(y[:, 0].astype(np.int32), None, y[:, 1], True)
+    Ytest = [Label(y[:, 0].astype(np.int32), None,
+                   y[:, 1].astype(np.float64) / np.sum(y[:, 1]), True)
              for y in Ytest]
 
     train_mask = load_msrc_weak_train_mask(MSRC_DATA_PATH, n_full)[:n_train]
