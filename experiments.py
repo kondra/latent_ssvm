@@ -13,22 +13,9 @@ from data_loader import load_msrc_weak_train_mask
 from label import Label
 from results import ExperimentResult, experiment
 
-MSRC_DATA_PATH = '/home/dmitry/Documents/Thesis/data/msrc/msrc.hdf5'
-
-# testing with weakly labeled train set
-
 
 def split_test_train(X, Y, n_full, n_train):
     # splitting syntetic dataset
-# binarization (for testing purposes
-#    for i in xrange(len(Y)):
-#        y = Y[i][:,0]
-#        labels = np.unique(y)
-#        i1 = np.random.randint(len(labels))
-#        i2 = np.random.randint(len(labels))
-#        y[y == labels[i1]] = labels[i2]
-#        Y[i][:,0] = y
-
     x_train = X[:n_train]
     y_train = [Label(y[:, 0].astype(np.int32), None, y[:, 1], True)
                for y in Y[:n_full]]
@@ -45,7 +32,9 @@ def split_test_train(X, Y, n_full, n_train):
 
 
 def load_msrc(n_full, n_train):
-    # splitting MSRC dataset
+    # loading & splitting MSRC dataset
+    MSRC_DATA_PATH = '/home/dmitry/Documents/Thesis/data/msrc/msrc.hdf5'
+
     Xtrain, Ytrain_raw, Xtest, Ytest = load_msrc_hdf(MSRC_DATA_PATH)
     Ytest = [Label(y[:, 0].astype(np.int32), None,
                    y[:, 1].astype(np.float64) / np.sum(y[:, 1]), True)
