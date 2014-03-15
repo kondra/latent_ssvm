@@ -1,5 +1,6 @@
 import numpy as np
 
+from pystruct.learners import FrankWolfeSSVM
 from one_slack_ssvm import OneSlackSSVM
 from time import time
 
@@ -195,5 +196,51 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
     meta_data['test_score'] = test_score
     meta_data['time_elapsed'] = time_elapsed
     meta_data['iter_done'] = clf.iter_done
+
+    return ExperimentResult(exp_data, meta_data)
+
+
+@experiment
+def syntetic_full_fw(n_train=100, C=0.1, dataset=1,
+                     max_iter=1000, n_inference_iter=5,
+                     check_dual_every=10,
+                     inference_method='gco'):
+    # save parameters as meta
+    meta_data = locals()
+
+    crf = HCRF(n_states=10, n_features=10, n_edge_features=2, alpha=1,
+               inference_method=inference_method, n_iter=n_inference_iter)
+    clf = FrankWolfeSSVM(crf, verbose=2, n_jobs=1, check_dual_every=check_dual_every,
+                         max_iter=max_iter, C=C)
+
+    X, Y = load_syntetic(dataset)
+    x_train, y_train, y_train_full, x_test, y_test = \
+        split_test_train(X, Y, n_train, n_train)
+
+    start = time()
+    clf.fit(x_train, y_train)
+    stop = time()
+
+    train_score = clf.score(x_train, y_train_full)
+    test_score = clf.score(x_test, y_test)
+    time_elapsed = stop - start
+
+    print '============================================================'
+    print 'Score on train set: %f' % train_score
+    print 'Score on test set: %f' % test_score
+    print 'Elapsed time: %f s' % time_elapsed
+
+    exp_data = {}
+
+    exp_data['timestamps'] = clf.timestamps_
+    exp_data['primal_objective'] = clf.primal_objective_curve_
+    exp_data['objective'] = clf.objective_curve_
+
+    meta_data['dataset_name'] = 'syntetic'
+    meta_data['annotation_type'] = 'full'
+    meta_data['label_type'] = 'full'
+    meta_data['train_score'] = train_score
+    meta_data['test_score'] = test_score
+    meta_data['time_elapsed'] = time_elapsed
 
     return ExperimentResult(exp_data, meta_data)
