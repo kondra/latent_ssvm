@@ -159,7 +159,7 @@ def syntetic_full_fw(n_train=100, C=0.1, dataset=1,
                          max_iter=max_iter, C=C)
 
     x_train, y_train, y_train_full, x_test, y_test = \
-        load_syntetic(dataset, n_full, n_train)
+        load_syntetic(dataset, n_train, n_train)
 
     start = time()
     clf.fit(x_train, y_train)
