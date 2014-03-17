@@ -2,7 +2,7 @@ import numpy as np
 
 from time import time
 
-from pystruct.learners import FrankWolfeSSVM
+from frankwolfe_ssvm import FrankWolfeSSVM
 from one_slack_ssvm import OneSlackSSVM
 from latent_structured_svm import LatentSSVM
 from heterogenous_crf import HCRF
