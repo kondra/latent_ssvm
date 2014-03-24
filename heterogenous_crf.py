@@ -5,11 +5,87 @@
 import numpy as np
 
 from pystruct.models.base import StructuredModel
-from pystruct.inference import inference_ad3
 
 from sklearn.utils.extmath import safe_sparse_dot
 
 from label import Label
+
+
+def _validate_params(unary_potentials, pairwise_params, edges):
+    n_states = unary_potentials.shape[-1]
+    if pairwise_params.shape == (n_states, n_states):
+        # only one matrix given
+        pairwise_potentials = np.repeat(pairwise_params[np.newaxis, :, :],
+                                        edges.shape[0], axis=0)
+    else:
+        if pairwise_params.shape != (edges.shape[0], n_states, n_states):
+            raise ValueError("Expected pairwise_params either to "
+                             "be of shape n_states x n_states "
+                             "or n_edges x n_states x n_states, but"
+                             " got shape %s. n_states=%d, n_edge=%d."
+                             % (repr(pairwise_params.shape), n_states,
+                                edges.shape[0]))
+        pairwise_potentials = pairwise_params
+    return n_states, pairwise_potentials
+
+
+def inference_ad3(unary_potentials, pairwise_potentials, edges, relaxed=False,
+                  verbose=0, return_energy=False, branch_and_bound=False,
+                  n_iterations=4000):
+    """Inference with AD3 dual decomposition subgradient solver.
+
+    Parameters
+    ----------
+    unary_potentials : nd-array
+        Unary potentials of energy function.
+
+    pairwise_potentials : nd-array
+        Pairwise potentials of energy function.
+
+    edges : nd-array
+        Edges of energy function.
+
+    relaxed : bool (default=False)
+        Whether to return the relaxed solution (``True``) or round to the next
+        integer solution (``False``).
+
+    verbose : int (default=0)
+        Degree of verbosity for solver.
+
+    return_energy : bool (default=False)
+        Additionally return the energy of the returned solution (according to
+        the solver).  If relaxed=False, this is the energy of the relaxed, not
+        the rounded solution.
+
+    branch_and_bound : bool (default=False)
+        Whether to attempt to produce an integral solution using
+        branch-and-bound.
+
+    Returns
+    -------
+    labels : nd-array
+        Approximate (usually) MAP variable assignment.
+        If relaxed=False, this is a tuple of unary and edge 'marginals'.
+    """
+    import ad3
+    n_states, pairwise_potentials = \
+        _validate_params(unary_potentials, pairwise_potentials, edges)
+
+    unaries = unary_potentials.reshape(-1, n_states)
+    res = ad3.general_graph(unaries, edges, pairwise_potentials, verbose=1,
+                            n_iterations=n_iterations, exact=branch_and_bound)
+    unary_marginals, pairwise_marginals, energy, solver_status = res
+    if verbose:
+        print solver_status[0],
+
+    if solver_status in ["fractional", "unsolved"] and relaxed:
+        unary_marginals = unary_marginals.reshape(unary_potentials.shape)
+        y = (unary_marginals, pairwise_marginals)
+    else:
+        y = np.argmax(unary_marginals, axis=-1)
+    if return_energy:
+        return y, -energy
+    return y
 
 
 def inference_gco(unary_potentials, pairwise_potentials, edges,
@@ -44,9 +120,6 @@ def inference_gco(unary_potentials, pairwise_potentials, edges,
 class HCRF(StructuredModel):
     def __init__(self, n_states=2, n_features=None, n_edge_features=1,
                  inference_method='gco', n_iter=5, alpha=1):
-#        if inference_method != 'gco':
-#            # only gco inference_method supported: we need label costs
-#            raise NotImplementedError
         self.all_states = set(range(0, n_states))
         self.n_edge_features = n_edge_features
         self.n_states = n_states
@@ -81,6 +154,8 @@ class HCRF(StructuredModel):
         return x[2]
 
     def latent(self, x, y, w):
+        if self.inference_method != 'gco':
+            raise NotImplementedError
         if y.full_labeled:
             return y
         unary_potentials = self._get_unary_potentials(x, w)
@@ -241,7 +316,8 @@ class HCRF(StructuredModel):
                 y_ret = Label(h[0], None, y.weights, True)
             elif self.inference_method == 'ad3':
                 h = inference_ad3(unary_potentials, pairwise_potentials, edges,
-                                 relaxed=relaxed, return_energy=False)
+                                  relaxed=relaxed, return_energy=False,
+                                  n_iterations=self.n_iter)
                 y_ret = Label(h, None, y.weights, True, relaxed)
 
 #            count = h[2]
@@ -253,6 +329,9 @@ class HCRF(StructuredModel):
 
             return y_ret
         else:
+            if self.inference_method != 'gco':
+                # only gco inference_method supported: we need label costs
+                raise NotImplementedError
             # this is weak labeled example
             # use pygco with label costs
             label_costs = np.zeros(self.n_states)
@@ -321,7 +400,8 @@ class HCRF(StructuredModel):
             y_ret = Label(h, None, None, True)
         elif self.inference_method == 'ad3':
             h = inference_ad3(unary_potentials, pairwise_potentials, edges,
-                             relaxed=relaxed, return_energy=False)
+                              relaxed=relaxed, return_energy=False,
+                              n_iterations=self.n_iter)
             y_ret = Label(h, None, None, True, relaxed)
 
         return y_ret
