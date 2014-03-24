@@ -95,7 +95,7 @@ def trw(node_weights, edges, edge_weights,
             x[np.arange(20), x_opt[i]] = 1
             lambdas[i] += alpha * (x - mean_x[chain,:])
 
-        if verbose:
+        if verbose > 2:
             print 'iteration {}: energy = {}'.format(iteration, energy)
 
         if energy > best_dual:
@@ -116,7 +116,7 @@ def trw(node_weights, edges, edge_weights,
         prev_energy = energy
         energy_history.append(energy)
 
-    if verbose:
+    if verbose > 0:
         print 'number of unconsistent labels: {}'.format(np.sum(mean_x == 0.5)/2)
 
     if relaxed:
@@ -168,6 +168,7 @@ class TRW(object):
         self.rho1 = 0.1
         self.eps = 0.001
         self.best_dual = -np.inf
+        self.inconsistent = []
 
     def do_step(self, node_weights, edges, pairwise_cost):
         n_nodes, n_states = node_weights.shape
@@ -210,6 +211,8 @@ class TRW(object):
             self.energy_history.append(energy)
 
             self.iteration += 1
+
+        self.inconsistent.append(np.sum(mean_x == 0.5)/2)
     
         if self.verbose:
-            print 'number of unconsistent labels: {}'.format(np.sum(mean_x == 0.5)/2)
+            print 'number of unconsistent labels: {}'.format(self.inconsistent[-1])
