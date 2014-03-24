@@ -47,10 +47,10 @@ def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
     time_elapsed = stop - start
 
     logger.info('============================================================')
-    logger.info('Score on train set:,f', train_score)
-    logger.info('Score on test set:,f', test_score)
+    logger.info('Score on train set: %f', train_score)
+    logger.info('Score on test set: %f', test_score)
     logger.info('Norm of weight vector: |w|=%f', np.linalg.norm(clf.w))
-    logger.info('Elapsed time:,f s', time_elapsed)
+    logger.info('Elapsed time: %f s', time_elapsed)
 
     test_scores = []
     for score in clf.staged_score(x_test, y_test):
@@ -116,10 +116,10 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
     time_elapsed = stop - start 
 
     logger.info('============================================================')
-    logger.info('Score on train set:,f', train_score)
-    logger.info('Score on test set:,f', test_score)
+    logger.info('Score on train set: %f', train_score)
+    logger.info('Score on test set: %f', test_score)
     logger.info('Norm of weight vector: |w|=%f', np.linalg.norm(clf.w))
-    logger.info('Elapsed time:,f s', time_elapsed)
+    logger.info('Elapsed time: %f s', time_elapsed)
 
     test_scores = []
     for score in clf.staged_score(x_test, y_test):
@@ -178,9 +178,9 @@ def syntetic_full_fw(n_train=100, C=0.1, dataset=1,
     time_elapsed = stop - start
 
     logger.info('============================================================')
-    logger.info('Score on train set:,f', train_score)
-    logger.info('Score on test set:,f', test_score)
-    logger.info('Elapsed time:,f s', time_elapsed)
+    logger.info('Score on train set: %f', train_score)
+    logger.info('Score on test set: %f', test_score)
+    logger.info('Elapsed time: %f s', time_elapsed)
 
     exp_data = {}
 
