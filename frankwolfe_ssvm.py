@@ -273,9 +273,10 @@ class FrankWolfeSSVM(BaseSSVM):
                 self.objective_curve_.append(dual_val)
                 self.timestamps_.append(time() - self.timestamps_[0])
                 self.w_history.append(self.w)
-                self.train_scores.append(self.score(X, Y))
                 if self.verbose > 0:
                     self.logger.info('dual: %f, dual_gap: %f, primal: %f', dual_val, dual_gap, primal_val)
+                self.train_scores.append(self.score(X, Y))
+                if self.verbose > 0:
                     self.logger.info('train score: %f', self.train_scores[-1])
                 if self.Xtest is not None and self.Ytest is not None:
                     self.test_scores.append(self.score(self.Xtest, self.Ytest))
