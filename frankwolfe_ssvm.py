@@ -8,9 +8,12 @@
 # Implements structured SVM as described in Joachims et. al.
 # Cutting-Plane Training of Structural SVMs
 
-import warnings
-from time import time
 import numpy as np
+
+from time import time
+import warnings
+import logging
+
 from sklearn.utils import check_random_state
 
 from pystruct.learners.ssvm import BaseSSVM
@@ -78,10 +81,6 @@ class FrankWolfeSSVM(BaseSSVM):
     tol : float, default=1e-3
         Convergence tolerance on the duality gap.
 
-    logger : logger object, default=None
-        Pystruct logger for storing the model or extracting additional
-        information.
-
     batch_mode : boolean, default=False
         Whether to use batch updates. Will slow down learning enormously.
 
@@ -124,7 +123,7 @@ class FrankWolfeSSVM(BaseSSVM):
        Total training time stored before each iteration.
     """
     def __init__(self, model, max_iter=1000, C=1.0, verbose=0, n_jobs=1,
-                 show_loss_every=0, logger=None, batch_mode=False,
+                 show_loss_every=0, batch_mode=False,
                  line_search=True, check_dual_every=10, tol=.001,
                  do_averaging=True, sample_method='perm', random_state=None):
 
@@ -137,7 +136,7 @@ class FrankWolfeSSVM(BaseSSVM):
 
         BaseSSVM.__init__(self, model, max_iter, C, verbose=verbose,
                           n_jobs=n_jobs, show_loss_every=show_loss_every,
-                          logger=logger)
+                          logger=None)
         self.tol = tol
         self.batch_mode = batch_mode
         self.line_search = line_search
@@ -145,6 +144,7 @@ class FrankWolfeSSVM(BaseSSVM):
         self.do_averaging = do_averaging
         self.sample_method = sample_method
         self.random_state = random_state
+        self.logger = logging.getLogger(__name__)
 
     def _calc_dual_gap(self, X, Y):
         n_samples = len(X)
@@ -200,15 +200,12 @@ class FrankWolfeSSVM(BaseSSVM):
             self.objective_curve_.append(dual_val)
             self.timestamps_.append(time() - self.timestamps_[0])
             if self.verbose > 0:
-                print("iteration %d, dual: %f, dual_gap: %f, primal: %f, gamma: %f"
-                      % (iteration, dual_val, dual_gap_display, primal_val, gamma))
+                self.logger.info('iteration %d, dual: %f, dual_gap: %f, primal: %f, gamma: %f',
+                            iteration, dual_val, dual_gap_display, primal_val, gamma)
 
             # update w and l
             self.w = (1.0 - gamma) * self.w + gamma * ws
             l = (1.0 - gamma) * l + gamma * ls
-
-            if self.logger is not None:
-                self.logger(self, iteration)
 
             if dual_gap < self.tol:
                 return
@@ -228,7 +225,7 @@ class FrankWolfeSSVM(BaseSSVM):
         rng = check_random_state(self.random_state)
         for iteration in xrange(self.max_iter):
             if self.verbose > 0:
-                print("Iteration %d" % iteration)
+                self.logger.info('Iteration %d', iteration)
 
             perm = np.arange(n_samples)
             if self.sample_method == 'perm':
@@ -237,7 +234,6 @@ class FrankWolfeSSVM(BaseSSVM):
                 perm = rng.randint(low=0, high=n_samples, size=n_samples)
 
             for j in range(n_samples):
-                print("Sample %d" % j)
                 i = perm[j]
                 x, y = X[i], Y[i]
                 y_hat, delta_joint_feature, slack, loss = find_constraint(self.model, x, y, w)
@@ -276,17 +272,20 @@ class FrankWolfeSSVM(BaseSSVM):
                 self.primal_objective_curve_.append(primal_val)
                 self.objective_curve_.append(dual_val)
                 self.timestamps_.append(time() - self.timestamps_[0])
+                self.w_history.append(self.w)
+                self.train_scores.append(self.score(X, Y))
                 if self.verbose > 0:
-                    print("dual: %f, dual_gap: %f, primal: %f"
-                          % (dual_val, dual_gap, primal_val))
-
-            if self.logger is not None:
-                self.logger(self, iteration)
+                    self.logger.info('dual: %f, dual_gap: %f, primal: %f', dual_val, dual_gap, primal_val)
+                    self.logger.info('train score: %f', self.train_scores[-1])
+                if self.Xtest is not None and self.Ytest is not None:
+                    self.test_scores.append(self.score(self.Xtest, self.Ytest))
+                    if self.verbose > 0:
+                        self.logger.info('test score: %f', self.test_scores[-1])
 
             if dual_gap < self.tol:
                 return
 
-    def fit(self, X, Y, constraints=None, initialize=True):
+    def fit(self, X, Y, Xtest=None, Ytest=None, constraints=None, initialize=True):
         """Learn parameters using (block-coordinate) Frank-Wolfe learning.
 
         Parameters
@@ -311,6 +310,15 @@ class FrankWolfeSSVM(BaseSSVM):
         self.timestamps_ = [time()]
         self.w = getattr(self, "w", np.zeros(self.model.size_joint_feature))
         self.l = getattr(self, "l", 0)
+
+        self.Xtest = Xtest
+        self.Ytest = Ytest
+        self.w_history = []
+        self.test_scores = []
+        self.train_scores = []
+
+        self.logger.info('Start FW')
+
         try:
             if self.batch_mode:
                 self._frank_wolfe_batch(X, Y)
@@ -318,11 +326,15 @@ class FrankWolfeSSVM(BaseSSVM):
                 self._frank_wolfe_bc(X, Y)
         except KeyboardInterrupt:
             pass
+
         if self.verbose:
-            print("Calculating final objective.")
+            self.logger.info('Calculating final objective.')
+
+        self.w_history = np.array(self.w_history)
+        self.test_scores = np.array(self.test_scores)
+        self.train_scores = np.array(self.train_scores)
+
         self.timestamps_.append(time() - self.timestamps_[0])
         self.primal_objective_curve_.append(self._objective(X, Y))
         self.objective_curve_.append(self.objective_curve_[-1])
-        if self.logger is not None:
-            self.logger(self, 'final')
         return self

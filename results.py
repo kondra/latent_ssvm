@@ -8,6 +8,8 @@ import sys
 import os
 import json
 import tempfile
+import logging
+import logging.config
 
 from git import Repo
 from pymongo import MongoClient
@@ -29,14 +31,39 @@ class experiment(object):
         f = tempfile.NamedTemporaryFile(suffix='.log',
                                         dir=tmp_directory,
                                         delete=False)
-        save_stdout = sys.stdout
-        sys.stdout = f
+        f.close()
+        logging.config.dictConfig(
+            {
+                'version': 1,
+                'formatters': {
+                    'default': {
+                        'format': '%(asctime)s %(levelname)s:%(name)s:%(message)s'
+                    },
+                },
+                'handlers': {
+                    'file': {
+                        '()': logging.FileHandler,
+                        'level': 'DEBUG',
+                        'filename': f.name,
+                        'mode': 'w',
+                        'formatter': 'default',
+                    },
+                    'default': {
+                        'level':'DEBUG',    
+                        'class':'logging.StreamHandler',
+                        'formatter': 'default',
+                    }, 
+                },
+                'root': {
+                    'handlers': ['file'],
+                    'level': 'DEBUG',
+                }
+            }
+        )
         try:
             result = self.f(*args, **kwargs)
         except:
             raise
-        f.close()
-        sys.stdout = save_stdout
         result.description = description
         result.save(f.name)
         return result

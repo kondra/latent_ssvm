@@ -1,6 +1,7 @@
 import numpy as np
 
 from time import time
+import logging
 
 from frankwolfe_ssvm import FrankWolfeSSVM
 from one_slack_ssvm import OneSlackSSVM
@@ -9,7 +10,6 @@ from heterogenous_crf import HCRF
 
 from results import ExperimentResult, experiment
 from utils import load_syntetic, load_msrc
-
 
 @experiment
 def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
@@ -20,6 +20,8 @@ def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
                   save_inner_w=False, inference_method='gco'):
     # save parameters as meta
     meta_data = locals()
+
+    logger = logging.getLogger(__name__)
 
     crf = HCRF(n_states=10, n_features=10, n_edge_features=2, alpha=alpha,
                inference_method=inference_method, n_iter=n_inference_iter)
@@ -44,11 +46,11 @@ def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
     test_score = clf.score(x_test, y_test)
     time_elapsed = stop - start
 
-    print '============================================================'
-    print 'Score on train set: %f' % train_score
-    print 'Score on test set: %f' % test_score
-    print 'Norm of weight vector: |w|=%f' % np.linalg.norm(clf.w)
-    print 'Elapsed time: %f s' % time_elapsed
+    logger.info('============================================================')
+    logger.info('Score on train set:,f', train_score)
+    logger.info('Score on test set:,f', test_score)
+    logger.info('Norm of weight vector: |w|=%f', np.linalg.norm(clf.w))
+    logger.info('Elapsed time:,f s', time_elapsed)
 
     test_scores = []
     for score in clf.staged_score(x_test, y_test):
@@ -87,6 +89,8 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
               save_inner_w=False, inference_method='gco'):
     meta_data = locals()
 
+    logger = logging.getLogger(__name__)
+
     crf = HCRF(n_states=24, n_features=2028, n_edge_features=4, alpha=alpha,
                inference_method=inference_method, n_iter=n_inference_iter)
     base_clf = OneSlackSSVM(crf, verbose=2, n_jobs=4,
@@ -111,11 +115,11 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
     test_score = clf.score(x_test, y_test)
     time_elapsed = stop - start 
 
-    print '============================================================'
-    print 'Score on train set: %f' % train_score
-    print 'Score on test set: %f' % test_score
-    print 'Norm of weight vector: |w|=%f' % np.linalg.norm(clf.w)
-    print 'Elapsed time: %f s' % time_elapsed
+    logger.info('============================================================')
+    logger.info('Score on train set:,f', train_score)
+    logger.info('Score on test set:,f', test_score)
+    logger.info('Norm of weight vector: |w|=%f', np.linalg.norm(clf.w))
+    logger.info('Elapsed time:,f s', time_elapsed)
 
     test_scores = []
     for score in clf.staged_score(x_test, y_test):
@@ -153,6 +157,8 @@ def syntetic_full_fw(n_train=100, C=0.1, dataset=1,
     # save parameters as meta
     meta_data = locals()
 
+    logger = logging.getLogger(__name__)
+
     crf = HCRF(n_states=10, n_features=10, n_edge_features=2, alpha=1,
                inference_method=inference_method, n_iter=n_inference_iter)
     clf = FrankWolfeSSVM(crf, verbose=2, n_jobs=1, check_dual_every=check_dual_every,
@@ -161,24 +167,29 @@ def syntetic_full_fw(n_train=100, C=0.1, dataset=1,
     x_train, y_train, y_train_full, x_test, y_test = \
         load_syntetic(dataset, n_train, n_train)
 
+    logger.info('start training')
+
     start = time()
-    clf.fit(x_train, y_train)
+    clf.fit(x_train, y_train, Xtest=x_test, Ytest=y_test)
     stop = time()
 
     train_score = clf.score(x_train, y_train_full)
     test_score = clf.score(x_test, y_test)
     time_elapsed = stop - start
 
-    print '============================================================'
-    print 'Score on train set: %f' % train_score
-    print 'Score on test set: %f' % test_score
-    print 'Elapsed time: %f s' % time_elapsed
+    logger.info('============================================================')
+    logger.info('Score on train set:,f', train_score)
+    logger.info('Score on test set:,f', test_score)
+    logger.info('Elapsed time:,f s', time_elapsed)
 
     exp_data = {}
 
     exp_data['timestamps'] = clf.timestamps_
     exp_data['primal_objective'] = clf.primal_objective_curve_
     exp_data['objective'] = clf.objective_curve_
+    exp_data['w_history'] = clf.w_history
+    exp_data['test_scores'] = clf.test_scores
+    exp_data['train_scores'] = clf.train_scores
 
     meta_data['dataset_name'] = 'syntetic'
     meta_data['annotation_type'] = 'full'
