@@ -152,7 +152,7 @@ def msrc_weak(n_full=20, n_train=276, C=100, latent_iter=25,
 @experiment
 def syntetic_full_fw(n_train=100, C=0.1, dataset=1,
                      max_iter=1000, n_inference_iter=5,
-                     check_dual_every=10,
+                     check_dual_every=10, test_samples=50,
                      inference_method='gco'):
     # save parameters as meta
     meta_data = locals()
@@ -170,7 +170,7 @@ def syntetic_full_fw(n_train=100, C=0.1, dataset=1,
     logger.info('start training')
 
     start = time()
-    clf.fit(x_train, y_train, Xtest=x_test, Ytest=y_test)
+    clf.fit(x_train, y_train, Xtest=x_test[:test_samples], Ytest=y_test[:test_samples])
     stop = time()
 
     train_score = clf.score(x_train, y_train_full)
