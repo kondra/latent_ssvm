@@ -328,14 +328,14 @@ class FrankWolfeSSVM(BaseSSVM):
         except KeyboardInterrupt:
             pass
 
-        if self.verbose:
-            self.logger.info('Calculating final objective.')
+#        if self.verbose:
+#            self.logger.info('Calculating final objective.')
 
         self.w_history = np.array(self.w_history)
         self.test_scores = np.array(self.test_scores)
         self.train_scores = np.array(self.train_scores)
 
-        self.timestamps_.append(time() - self.timestamps_[0])
-        self.primal_objective_curve_.append(self._objective(X, Y))
-        self.objective_curve_.append(self.objective_curve_[-1])
+#        self.timestamps_.append(time() - self.timestamps_[0])
+#        self.primal_objective_curve_.append(self._objective(X, Y))
+#        self.objective_curve_.append(self.objective_curve_[-1])
         return self
