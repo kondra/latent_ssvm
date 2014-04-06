@@ -6,6 +6,7 @@ import logging
 from frankwolfe_ssvm import FrankWolfeSSVM
 from one_slack_ssvm import OneSlackSSVM
 from latent_structured_svm import LatentSSVM
+from over import Over
 from heterogenous_crf import HCRF
 
 from results import ExperimentResult, experiment
@@ -194,8 +195,42 @@ def syntetic_full_fw(n_train=100, C=0.1, dataset=1,
     meta_data['dataset_name'] = 'syntetic'
     meta_data['annotation_type'] = 'full'
     meta_data['label_type'] = 'full'
+    meta_data['trainer'] = 'frank-wolfe'
     meta_data['train_score'] = train_score
     meta_data['test_score'] = test_score
     meta_data['time_elapsed'] = time_elapsed
+
+    return ExperimentResult(exp_data, meta_data)
+
+
+@experiment
+def syntetic_over(n_train=100, mu=1, dataset=1,
+                  max_iter=100, verbose=1):
+    # save parameters as meta
+    meta_data = locals()
+
+    logger = logging.getLogger(__name__)
+
+    trainer = Over(n_states=10, n_features=10, n_edge_features=2,
+                   mu=mu, max_iter=max_iter, verbose=verbose)
+
+    x_train, y_train, y_train_full, x_test, y_test = \
+        load_syntetic(dataset, n_train, n_train)
+
+    logger.info('start training')
+
+    start = time()
+    trainer.fit(x_train, y_train)
+    stop = time()
+
+    exp_data = {}
+
+    exp_data['timestamps'] = clf.timestamps
+    exp_data['objective'] = clf.objective_curve
+
+    meta_data['dataset_name'] = 'syntetic'
+    meta_data['annotation_type'] = 'full'
+    meta_data['label_type'] = 'full'
+    meta_data['trainer'] = 'komodakis'
 
     return ExperimentResult(exp_data, meta_data)
