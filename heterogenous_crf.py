@@ -409,7 +409,7 @@ class HCRF(StructuredModel):
             y_ret = Label(h, None, None, True, relaxed)
         elif self.inference_method == 'trw':
             from trw import trw
-            h = trw(unary_potentials, edges, pairwise_potentials, max_iter=self.n_iter)
+            h = trw(-unary_potentials, edges, -pairwise_potentials, max_iter=self.n_iter)
             y_ret = Label(h.astype(np.int32), None, None, True)
 
         return y_ret
