@@ -70,6 +70,7 @@ class Over(object):
         return safe_sparse_dot(features, unary_params.T, dense_output=True)
 
     def _loss_augment_unaries(self, unaries, y, weights):
+        unaries = unaries.copy()
         for label in xrange(self.n_states):
             mask = y != label
             unaries[mask, label] -= weights[mask]
@@ -134,9 +135,9 @@ class Over(object):
 
         self.logger.info('Initialization')
     
-        for x, y in zip(X, Y):
+        for k in xrange(len(X)):
             _edge_index = {}
-            for i, edge in enumerate(self._get_edges(x)):
+            for i, edge in enumerate(self._get_edges(X[k])):
                 _edge_index[(edge[0], edge[1])] = i
     
             _y_hat = []
@@ -167,8 +168,8 @@ class Over(object):
             edge_index.append(_edge_index)
             y_hat.append(_y_hat)
 
-        w = np.zeros(self.size_w)
-        alpha = 0.001
+        w = np.ones(self.size_w)
+        alpha = 0.0001
 
         self.start_time = time.time()
         self.timestamps = [0]
@@ -182,6 +183,9 @@ class Over(object):
 
             energies = np.zeros((len(X), len(chains[0])))
 
+            #print w
+            counter = 0
+
             for k in xrange(len(X)):
                 x, y = X[k], Y[k]
 
@@ -190,10 +194,19 @@ class Over(object):
                 pairwise = self._get_pairwise_potentials(x, w)
 
                 for i in xrange(len(chains[k])):
+#                    print lambdas[k][i]
                     y_hat[k][i], energies[k][i] = optimize_chain(chains[k][i],
                                                                  lambdas[k][i] + 0.5 * unaries[chains[k][i],:],
+#                                                                 0.5 * unaries[chains[k][i],:],
                                                                  pairwise, edge_index[k])
+#                    print unaries[chains[k][i],:]
+                    counter += np.sum(y.full[chains[k][i]] != y_hat[k][i])
                     objective -= energies[k][i] 
+
+            print counter
+
+#            if iteration == 1:
+#                sys.exit(0)
 
             self.logger.info('Update w')
 
@@ -222,7 +235,7 @@ class Over(object):
                     if diff > 1e-3:
                         self.logger.warning('sample %d, tree %d, energy diff: %f', k, i, diff)
 
-            print dw
+#            print dw
 
             w -= alpha * dw
 
@@ -234,20 +247,56 @@ class Over(object):
 
             for k in xrange(len(X)):
                 lambda_sum = np.zeros((n_nodes, self.n_states), dtype=np.float64)
+
+                yy = -1 * np.ones(n_nodes, dtype=np.int32)
+                counter = 0
+
                 for p in xrange(n_nodes):
                     assert len(contains_node[k][p]) == 2
                     for i in contains_node[k][p]:
                         pos = np.where(chains[k][i] == p)[0][0]
                         lambda_sum[p, y_hat[k][i][pos]] += 1
 
+                        # debug
+                        if yy[p] >= 0 and yy[p] != y_hat[k][i][pos]:
+                            counter += 1
+                        else:
+                            yy[p] = y_hat[k][i][pos]
+
+                #print yy.reshape((20,20))
+                #print Y[k].full.reshape((20,20))
+
+                print 'number of errors: {}'.format(np.sum(yy != Y[k].full))
+                print 'num of conflicting labels: {}'.format(counter)
+
 #                if k == 0:
 #                    print lambda_sum[1:20,:]
+
+                nz_counter = 0
 
                 for i in xrange(len(chains[k])):
                     N = lambdas[k][i].shape[0]
 
                     lambdas[k][i][np.ogrid[:N], y_hat[k][i]] += alpha
                     lambdas[k][i] -= alpha * 0.5 * lambda_sum[chains[k][i],:]
+#                    print lambdas[k][i]
+
+                    # debug
+                    mask = np.zeros(lambdas[k][i].shape)
+                    mask[np.ogrid[:N], y_hat[k][i]] = 1
+                    update = mask - 0.5 * lambda_sum[chains[k][i],:]
+                    nz_counter += np.sum(np.abs(update) > 0)
+
+                print 'number of nonzero lambdas: {}'.format(nz_counter)
+                if nz_counter != 4 * counter:
+                    sys.exit(0)
+
+#                lambda_sum = np.zeros((n_nodes, self.n_states), dtype=np.float64)
+#                for p in xrange(n_nodes):
+#                    for i in contains_node[k][p]:
+#                        pos = np.where(chains[k][i] == p)[0][0]
+#                        lambda_sum[p, :] += lambdas[k][i][pos, :]
+#                print np.sum(np.abs(lambda_sum))
 
 #            print lambdas[0][0]
 
@@ -255,6 +304,10 @@ class Over(object):
 
 #            if iteration:
 #                alpha = 0.1 / np.sqrt(iteration)
+
+#            if iteration == 1:
+#                sys.exit(0)
+#            alpha = np.min(1e-5, alpha/10)
 
             self.timestamps.append(time.time() - self.start_time)
             self.objective_curve.append(objective)
