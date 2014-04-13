@@ -77,7 +77,7 @@ class Subgrad(object):
         unaries = unaries.copy()
         for label in xrange(self.n_states):
             mask = y != label
-            unaries[mask, label] += weights[mask]
+            unaries[mask, label] -= weights[mask]
         return unaries
 
     def _joint_features(self, chain, x, y, edge_index):
@@ -143,17 +143,12 @@ class Subgrad(object):
             for k in xrange(len(X)):
                 x, y = X[k], Y[k]
 
-                unaries = self._get_unary_potentials(x, w)
-                for label in xrange(self.n_states):
-                    mask = y.full != label
-                    unaries[mask, label] += y.weights[mask]
-
-#                unaries = self._loss_augment_unaries(self._get_unary_potentials(x, w),
-#                                                     y.full, y.weights)
+                unaries = self._loss_augment_unaries(self._get_unary_potentials(x, w),
+                                                     y.full, y.weights)
                 pairwise = self._get_pairwise_potentials(x, w)
-                y_hat = inference_gco(unaries, pairwise, self._get_edges(x), n_iter=5)
+                y_hat = inference_gco(-unaries, -pairwise, self._get_edges(x), n_iter=5)
                 
-                dw += self._joint_features_full(x, y.full) \
+                dw -= self._joint_features_full(x, y.full) \
                     - self._joint_features_full(x, y_hat)
 
             dw -= w / self.mu
