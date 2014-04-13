@@ -34,11 +34,11 @@ def optimize_chain(chain, unary_cost, pairwise_cost, edge_index,
 
 class Over(object):
     def __init__(self, n_states, n_features, n_edge_features,
-                 mu=1, verbose=0, max_iter=200):
+                 C=1, verbose=0, max_iter=200):
         self.n_states = n_states
         self.n_features = n_features
         self.n_edge_features = n_edge_features
-        self.mu = mu
+        self.C = C
         self.verbose = verbose
         self.max_iter = max_iter
         self.size_w = (self.n_states * self.n_features +
@@ -169,33 +169,23 @@ class Over(object):
             y_hat.append(_y_hat)
 
         w = np.zeros(self.size_w)
-        w_old = np.zeros(self.size_w)
-        alpha = 0.1
+        self.w = w.copy()
 
         self.start_time = time.time()
         self.timestamps = [0]
         self.objective_curve = []
         self.train_score = []
+        self.test_score = []
 
+        alpha = 0.1
         mult = 0.5
-
-        learning_rate = len(X)
-        decay_exponent = 1
-        decay_t0 = 10
-        momentum = 0
 
         for iteration in xrange(self.max_iter):
             self.logger.info('Iteration %d', iteration)
-            self.logger.info('Optimize slave MRF')
-
-#            print w
+            self.logger.info('Optimize slave MRF and update w')
 
             objective = 0
-
-            energies = np.zeros((len(X), len(chains[0])))
-
-            #print w
-            counter = 0
+            dw = np.zeros(w.shape)
 
             for k in xrange(len(X)):
                 x, y = X[k], Y[k]
@@ -204,139 +194,48 @@ class Over(object):
                 unaries_ = self._loss_augment_unaries(unaries, y.full, y.weights)
                 pairwise = self._get_pairwise_potentials(x, w)
 
-                for i in xrange(len(chains[k])):
-#                    print lambdas[k][i]
-                    y_hat[k][i], energies[k][i] = optimize_chain(chains[k][i],
-                                                                 (lambdas[k][i] + mult * unaries_[chains[k][i],:]),##
-                                                                 pairwise, edge_index[k])##
-                    yy, e = optimize_chain(chains[k][i],
-                                           (lambdas[k][i] + mult * unaries[chains[k][i],:]),##
-                                           pairwise, edge_index[k])##
-#                    print unaries[chains[k][i],:]
-#                    print yy
-                    counter += np.sum(y.full[chains[k][i]] != np.array(yy))
-                    objective -= energies[k][i] 
-
-            self.logger.info('number of ERRORs %d', counter)
-
-#            if iteration == 1:
-#                sys.exit(0)
-
-            self.logger.info('Update w')
-
-            dw = np.zeros(w.shape)
-
-            dw -= w / self.mu
-#            objective += self.mu * np.sum(w ** 2)
-
-            for k in xrange(len(X)):
-                x, y = X[k], Y[k]
-
                 objective += np.dot(w, self._joint_features_full(x, y.full))
 
-#                dw += psi
-
                 for i in xrange(len(chains[k])):
+                    y_hat[k][i], energy = optimize_chain(chains[k][i],
+                                                         lambdas[k][i] + mult * unaries_[chains[k][i],:],
+                                                         pairwise, edge_index[k])
+
                     _psi = self._joint_features(chains[k][i], x, y.full[chains[k][i]], edge_index[k]) \
                         - self._joint_features(chains[k][i], x, y_hat[k][i], edge_index[k])
-                    _psi[:self.n_features * self.n_states] *= mult # hardcoded I_p^k
+                    _psi[:self.n_features * self.n_states] *= mult
+
+                    objective -= energy
                     dw -= _psi
 
-#                    N = lambdas[k][i].shape[0]
-#                    e = np.sum(lambdas[k][i][np.ogrid[:N],y_hat[k][i]]) + np.dot(w, _psi) \
-#                        - mult * np.sum(y_hat[k][i] != y.full[chains[k][i]])
-#                    diff = np.abs(e - energies[k][i])
-#                    if diff > 1e-3:
-#                        self.logger.warning('sample %d, tree %d, energy diff: %f', k, i, diff)
-
-#            self.logger.info('w: %s', str(w))
-            self.logger.info('step: alpha = %f', alpha)
-
-#            print dw
-#            grad = (djoint_feature - w / (self.C * n_samples))
-
-#            self.grad_old = ((1 - self.momentum) * grad + self.momentum * self.grad_old)
-#            effective_lr = (learning_rate / (iteration + decay_t0) ** decay_exponent)
-#            w -= effective_lr * dw
+            dw -= w / self.C
 
             w += alpha * dw
+            objectvie = self.C * objective + np.sum(w ** 2) / 2
 
-            self.train_score.append(scorer(w))
-            self.logger.info('_____________________SCORE: %f', self.train_score[-1])
-
-#            self.logger.info('SCORE: %f', scorer(w))
-
-#            self.logger.info('%s', str(w))
+            self.train_score.append(train_scorer(w))
+            self.test_score.append(test_scorer(w))
+            self.logger.info('Train SCORE: %f', self.train_score[-1])
+            self.logger.info('Test SCORE: %f', self.test_score[-1])
 
             self.logger.info('Update lambda')
-            error_num = 0
-#####here
 
             for k in xrange(len(X)):
                 lambda_sum = np.zeros((n_nodes, self.n_states), dtype=np.float64)
 
-                yy = -1 * np.ones(n_nodes, dtype=np.int32)
-                counter = 0
-
                 for p in xrange(n_nodes):
-#                    assert len(contains_node[k][p]) == 2
+                    assert len(contains_node[k][p]) == 2
                     for i in contains_node[k][p]:
                         pos = np.where(chains[k][i] == p)[0][0]
                         lambda_sum[p, y_hat[k][i][pos]] += 1
-
-                        # debug
-                        if yy[p] >= 0 and yy[p] != y_hat[k][i][pos]:
-                            counter += 1
-                        else:
-                            yy[p] = y_hat[k][i][pos]
-
-                #print yy.reshape((20,20))
-                #print Y[k].full.reshape((20,20))
-
-#                print 'number of errors: {}'.format(np.sum(yy != Y[k].full))
-                error_num += np.sum(yy != Y[k].full)
-#                print 'num of conflicting labels: {}'.format(counter)
-
-#                if k == 0:
-#                    print lambda_sum[1:20,:]
-
-                nz_counter = 0
 
                 for i in xrange(len(chains[k])):
                     N = lambdas[k][i].shape[0]
 
                     lambdas[k][i][np.ogrid[:N], y_hat[k][i]] += alpha
                     lambdas[k][i] -= alpha * mult * lambda_sum[chains[k][i],:]
-#                    print lambdas[k][i]
 
-                    # debug
-                    mask = np.zeros(lambdas[k][i].shape)
-                    mask[np.ogrid[:N], y_hat[k][i]] = 1
-                    update = mask - mult * lambda_sum[chains[k][i],:]
-                    nz_counter += np.sum(np.abs(update) > 0)
-
-#                print 'number of nonzero lambdas: {}'.format(nz_counter)
-#                if nz_counter != 4 * counter:
-#                    sys.exit(0)
-
-#                lambda_sum = np.zeros((n_nodes, self.n_states), dtype=np.float64)
-#                for p in xrange(n_nodes):
-#                    for i in contains_node[k][p]:
-#                        pos = np.where(chains[k][i] == p)[0][0]
-#                        lambda_sum[p, :] += lambdas[k][i][pos, :]
-#                print np.sum(np.abs(lambda_sum))
-
-#            print lambdas[0][0]
-
-#            self.logger.info('%s', lambdas)
-
-#            if iteration:
-#                alpha = 0.1 / np.sqrt(iteration)
-
-#            if iteration == 1:
-#                sys.exit(0)
-#####end
-            self.logger.info('diff: %f', np.sum((w-w_old)**2))
+            self.logger.info('diff: %f', np.sum((w-self.w)**2))
             if iteration:
                 alpha = max(1e-10, 1.0 / iteration)
 
@@ -345,8 +244,6 @@ class Over(object):
 
             self.logger.info('Objective: %f', objective)
 
-            self.logger.info('error num: %d', error_num)
-
-            w_old = w.copy()
+            self.w = w.copy()
         
         self.w = w
