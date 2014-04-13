@@ -358,7 +358,7 @@ class HCRF(StructuredModel):
 
             return y_ret
 
-    def inference(self, x, w, relaxed=False, return_energy=False):
+    def inference(self, x, w, relaxed=False, return_energy=False, invert=False):
         """Inference for x using parameters w.
 
         Finds (approximately)
@@ -397,6 +397,9 @@ class HCRF(StructuredModel):
         unary_potentials = self._get_unary_potentials(x, w)
         pairwise_potentials = self._get_pairwise_potentials(x, w)
         edges = self._get_edges(x)
+        if invert:
+            unary_potentials = -unary_potentials
+            pairwise_potentials = -pairwise_potentials
 
         if self.inference_method == 'gco':
             h = inference_gco(unary_potentials, pairwise_potentials,
