@@ -258,6 +258,56 @@ def plot_all(result, save=False):
     plot_changes(result, save_dir=save_dir)
     plot_inner_objectives(result, save_dir=save_dir)
 
+# utils for full launches
+
+def plot_primal_objective(result, first_iter=1, save_dir=None, check_every=1):
+    objective = result.data['objective'][first_iter:]
+   # if check_every > 1:
+   #     ind = np.arange(objective.shape[0] * check_every, step=check_every)
+   # else:
+   #     ind = np.arange(first_iter, objective.shape[0] + first_iter)
+    ind = np.arange(first_iter, objective.shape[0] + first_iter)
+
+    pl.figure(figsize=(5,5), dpi=96)
+    pl.plot(ind, objective)
+    pl.title('objective')
+    pl.xlabel('iteration')
+    if ind.shape < 10:
+        pl.xticks(ind, ind)
+
+    if save_dir is not None:
+        pl.savefig(save_dir + '/primal_objective.png')
+
+def plot_scores_for_full(result, save_dir=None, check_every=1):
+    test_scores =  result.data['test_scores']
+    train_scores =  result.data['train_scores']
+    if check_every > 1:
+        ind = np.arange(test_scores.shape[0] * check_every, step=check_every)
+    else:
+        ind = np.arange(test_scores.shape[0])
+
+    pl.figure(figsize=(5, 5), dpi=96)
+    pl.title('score')
+    pl.plot(ind, test_scores, label='test')
+    pl.plot(ind, train_scores, c='r', label='train')
+    pl.ylabel('hamming loss')
+    pl.xlabel('iteration')
+    if ind.shape < 10:
+        pl.xticks(ind, ind * check_every)
+    pl.legend(loc='lower right')
+
+    if save_dir is not None:
+        pl.savefig(save_dir + '/scores.png')
+
+def plot_all_for_full(result, save=False, check_every=1, first_iter=1):
+    save_dir = None
+    if save:
+        save_dir = os.path.join(results.working_directory, result.id, 'figures')
+        if not os.path.exists(save_dir):
+            os.mkdir(save_dir)
+    plot_scores_for_full(result, save_dir=save_dir, check_every=check_every)
+    plot_primal_objective(result, save_dir=save_dir, check_every=check_every, first_iter=first_iter)
+
 # auxilary utils
 
 def get_objective_per_iter(result, iteration):
