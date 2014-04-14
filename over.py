@@ -4,6 +4,7 @@ import sys
 import numpy as np
 
 from sklearn.utils.extmath import safe_sparse_dot
+from chain_opt import optimize_chain_fast
 
 
 def optimize_chain(chain, unary_cost, pairwise_cost, edge_index,
@@ -34,7 +35,7 @@ def optimize_chain(chain, unary_cost, pairwise_cost, edge_index,
 
 class Over(object):
     def __init__(self, n_states, n_features, n_edge_features,
-                 C=1, verbose=0, max_iter=200):
+                 C=1, verbose=0, max_iter=200, check_every=1):
         self.n_states = n_states
         self.n_features = n_features
         self.n_edge_features = n_edge_features
@@ -44,6 +45,7 @@ class Over(object):
         self.size_w = (self.n_states * self.n_features +
                        self.n_states * self.n_edge_features)
         self.logger = logging.getLogger(__name__)
+        self.check_every = check_every
 
     def _get_edges(self, x):
         return x[1]
@@ -176,6 +178,7 @@ class Over(object):
         self.objective_curve = []
         self.train_score = []
         self.test_score = []
+        self.w_history = []
 
         alpha = 0.1
         mult = 0.5
@@ -199,7 +202,8 @@ class Over(object):
                 for i in xrange(len(chains[k])):
                     y_hat[k][i], energy = optimize_chain(chains[k][i],
                                                          lambdas[k][i] + mult * unaries_[chains[k][i],:],
-                                                         pairwise, edge_index[k])
+                                                         pairwise,
+                                                         edge_index[k])
 
                     _psi = self._joint_features(chains[k][i], x, y.full[chains[k][i]], edge_index[k]) \
                         - self._joint_features(chains[k][i], x, y_hat[k][i], edge_index[k])
@@ -213,10 +217,13 @@ class Over(object):
             w += alpha * dw
             objectvie = self.C * objective + np.sum(w ** 2) / 2
 
-            self.train_score.append(train_scorer(w))
-            self.test_score.append(test_scorer(w))
-            self.logger.info('Train SCORE: %f', self.train_score[-1])
-            self.logger.info('Test SCORE: %f', self.test_score[-1])
+            self.logger.info('Compute train and test scores')
+
+            if iteration and (iteration % self.check_every == 0):
+                self.train_score.append(train_scorer(w))
+                self.logger.info('Train SCORE: %f', self.train_score[-1])
+                self.test_score.append(test_scorer(w))
+                self.logger.info('Test SCORE: %f', self.test_score[-1])
 
             self.logger.info('Update lambda')
 
@@ -245,5 +252,12 @@ class Over(object):
             self.logger.info('Objective: %f', objective)
 
             self.w = w.copy()
+            self.w_history.append(self.w)
         
         self.w = w
+
+        self.timestamps = np.array(self.timestamps)
+        self.objective_curve = np.array(self.objective_curve)
+        self.train_score = np.array(self.train_score)
+        self.test_score = np.array(self.test_score)
+        self.w_history = np.vstack(self.w_history)

@@ -213,16 +213,16 @@ def compute_score(crf, w, X, Y, invert=False):
 @experiment
 def syntetic_over(n_train=100, C=1, dataset=1,
                   max_iter=100, verbose=1,
-                  test_samples=10):
+                  test_samples=10, check_every=10):
     # save parameters as meta
     meta_data = locals()
 
     logger = logging.getLogger(__name__)
 
     trainer = Over(n_states=10, n_features=10, n_edge_features=2,
-                   C=C, max_iter=max_iter, verbose=verbose)
+                   C=C, max_iter=max_iter, verbose=verbose, check_every=check_every)
     crf = HCRF(n_states=10, n_features=10, n_edge_features=2, alpha=1,
-               inference_method='gco', n_iter=5)
+               inference_method='trw', n_iter=100)
 
     x_train, y_train, y_train_full, x_test, y_test = \
         load_syntetic(dataset, n_train, n_train)
@@ -253,6 +253,7 @@ def syntetic_over(n_train=100, C=1, dataset=1,
     exp_data['w'] = trainer.w
     exp_data['train_scores'] = trainer.train_score
     exp_data['test_scores'] = trainer.test_score
+    exp_data['w_history'] = trainer.w_history
 
     meta_data['dataset_name'] = 'syntetic'
     meta_data['annotation_type'] = 'full'
@@ -263,56 +264,57 @@ def syntetic_over(n_train=100, C=1, dataset=1,
 
     return ExperimentResult(exp_data, meta_data)
 
-@experiment
-def syntetic_subgrad(n_train=100, mu=1, dataset=1,
-                     max_iter=100, verbose=1):
-    # save parameters as meta
-    meta_data = locals()
-
-    logger = logging.getLogger(__name__)
-
-    crf = HCRF(n_states=10, n_features=10, n_edge_features=2, alpha=1,
-               inference_method='gco', n_iter=5)
-    trainer = Subgrad(model=crf, n_states=10, n_features=10, n_edge_features=2,
-                      mu=mu, max_iter=max_iter, verbose=verbose)
-
-    x_train, y_train, y_train_full, x_test, y_test = \
-        load_syntetic(dataset, n_train, n_train)
-
-    logger.info('start training')
-
-    start = time()
-    trainer.fit(x_train, y_train, lambda w: compute_score(crf, w, x_train, y_train, invert=True))
-    stop = time()
-
-    logger.info('testing')
-
-    test_score = compute_score(crf, trainer.w, x_test, y_test)
-    train_score = compute_score(crf, trainer.w, x_train, y_train)
-
-    logger.info('========================================')
-    logger.info('train score: %f', train_score)
-    logger.info('test score: %f', test_score)
-
-    exp_data = {}
-
-    exp_data['timestamps'] = trainer.timestamps
-    exp_data['objective'] = trainer.objective_curve
-    exp_data['w'] = trainer.w
-    exp_data['train_scores'] = trainer.train_score
-
-    meta_data['dataset_name'] = 'syntetic'
-    meta_data['annotation_type'] = 'full'
-    meta_data['label_type'] = 'full'
-    meta_data['trainer'] = 'mysubgrad'
-    meta_data['train_score'] = train_score
-    meta_data['test_score'] = test_score
-
-    return ExperimentResult(exp_data, meta_data)
+#@experiment
+#def syntetic_subgrad(n_train=100, mu=1, dataset=1,
+#                     max_iter=100, verbose=1):
+#    # save parameters as meta
+#    meta_data = locals()
+#
+#    logger = logging.getLogger(__name__)
+#
+#    crf = HCRF(n_states=10, n_features=10, n_edge_features=2, alpha=1,
+#               inference_method='gco', n_iter=5)
+#    trainer = Subgrad(model=crf, n_states=10, n_features=10, n_edge_features=2,
+#                      mu=mu, max_iter=max_iter, verbose=verbose)
+#
+#    x_train, y_train, y_train_full, x_test, y_test = \
+#        load_syntetic(dataset, n_train, n_train)
+#
+#    logger.info('start training')
+#
+#    start = time()
+#    trainer.fit(x_train, y_train, lambda w: compute_score(crf, w, x_train, y_train, invert=True))
+#    stop = time()
+#
+#    logger.info('testing')
+#
+#    test_score = compute_score(crf, trainer.w, x_test, y_test)
+#    train_score = compute_score(crf, trainer.w, x_train, y_train)
+#
+#    logger.info('========================================')
+#    logger.info('train score: %f', train_score)
+#    logger.info('test score: %f', test_score)
+#
+#    exp_data = {}
+#
+#    exp_data['timestamps'] = np.array(trainer.timestamps)
+#    exp_data['objective'] = np.array(trainer.objective_curve)
+#    exp_data['w'] = trainer.w
+#    exp_data['train_scores'] = np.array(trainer.train_score)
+#
+#    meta_data['dataset_name'] = 'syntetic'
+#    meta_data['annotation_type'] = 'full'
+#    meta_data['label_type'] = 'full'
+#    meta_data['trainer'] = 'mysubgrad'
+#    meta_data['train_score'] = train_score
+#    meta_data['test_score'] = test_score
+#
+#    return ExperimentResult(exp_data, meta_data)
 
 @experiment
 def syntetic_subgradient(n_train=100, dataset=1, n_jobs=4, C=1,
-                         max_iter=100, verbose=1, test_samples=10):
+                         max_iter=100, verbose=1, test_samples=10,
+                         check_every=10):
     # save parameters as meta
     meta_data = locals()
 
@@ -321,7 +323,7 @@ def syntetic_subgradient(n_train=100, dataset=1, n_jobs=4, C=1,
     crf = HCRF(n_states=10, n_features=10, n_edge_features=2, alpha=1,
                inference_method='gco', n_iter=5)
     clf = SubgradientSSVM(crf, verbose=verbose, n_jobs=n_jobs,
-                         max_iter=max_iter, C=C)
+                         max_iter=max_iter, C=C, check_every=check_every)
 
     x_train, y_train, y_train_full, x_test, y_test = \
         load_syntetic(dataset, n_train, n_train)
@@ -348,11 +350,11 @@ def syntetic_subgradient(n_train=100, dataset=1, n_jobs=4, C=1,
     exp_data = {}
 
     exp_data['w'] = clf.w
-    exp_data['objective'] = clf.objective_curve_
-    exp_data['train_scores'] = clf.train_scores
-    exp_data['test_scores'] = clf.test_scores
-    exp_data['timestamps'] = clf.timestamps_
-    exp_data['w_history'] = clf.w_hisory
+    exp_data['objective'] = np.array(clf.objective_curve_)
+    exp_data['train_scores'] = np.array(clf.train_scores)
+    exp_data['test_scores'] = np.array(clf.test_scores)
+    exp_data['timestamps'] = np.array(clf.timestamps_)
+    exp_data['w_history'] = clf.w_history
 
     meta_data['dataset_name'] = 'syntetic'
     meta_data['annotation_type'] = 'full'

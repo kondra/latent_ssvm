@@ -112,7 +112,8 @@ class SubgradientSSVM(BaseSSVM):
                  learning_rate='auto', n_jobs=1,
                  show_loss_every=0, decay_exponent=1,
                  break_on_no_constraints=True, logger=None, batch_size=None,
-                 decay_t0=10, averaging=None, shuffle=False):
+                 decay_t0=10, averaging=None, shuffle=False,
+                 check_every=1):
         BaseSSVM.__init__(self, model, max_iter, C, verbose=verbose,
                           n_jobs=n_jobs, show_loss_every=show_loss_every,
                           logger=logger)
@@ -126,6 +127,7 @@ class SubgradientSSVM(BaseSSVM):
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.alpha = 0.1
+        self.check_every = check_every
 
     def _solve_subgradient(self, djoint_feature, n_samples, w):
         """Do a single subgradient step."""
@@ -225,12 +227,14 @@ class SubgradientSSVM(BaseSSVM):
                 if self.verbose > 2:
                     print(self.w)
 
-                if train_scorer is not None:
-                    self.train_scores.append(train_scorer(self.w))
-                    print 'Train SCORE: {}'.format(self.train_scores[-1])
-                if test_scorer is not None:
-                    self.test_scores.append(test_scorer(self.w))
-                    print 'Test SCORE: {}'.format(self.test_scores[-1])
+                if iteration % self.check_every == 0:
+                    if train_scorer is not None:
+                        self.train_scores.append(train_scorer(self.w))
+                        print 'Train SCORE: {}'.format(self.train_scores[-1])
+                    if test_scorer is not None:
+                        self.test_scores.append(test_scorer(self.w))
+                        print 'Test SCORE: {}'.format(self.test_scores[-1])
+
                 self.w_history.append(self.w.copy())
 
                 self._compute_training_loss(X, Y, iteration)
