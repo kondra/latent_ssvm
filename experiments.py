@@ -205,24 +205,25 @@ def syntetic_full_fw(n_train=100, C=0.1, dataset=1,
 
     return ExperimentResult(exp_data, meta_data)
 
-def compute_score(crf, w, X, Y, invert=False):
-    losses = [crf.loss(y, crf.inference(x, w, invert=invert)) / float(np.sum(y.weights))
+def compute_score(crf, w, X, Y, invert=False, relaxed=False):
+    losses = [crf.loss(y, crf.inference(x, w, invert=invert, relaxed=relaxed)) / float(np.sum(y.weights))
               for x, y in zip(X, Y)]
     return 1. - np.sum(losses) / float(len(X))
 
 @experiment
 def syntetic_over(n_train=100, C=1, dataset=1,
                   max_iter=100, verbose=1,
-                  test_samples=10, check_every=10):
+                  test_samples=10, check_every=10,
+                  test_method='gco', test_n_iter=5, relaxed_test=False):
     # save parameters as meta
     meta_data = locals()
 
     logger = logging.getLogger(__name__)
 
+    crf = HCRF(n_states=10, n_features=10, n_edge_features=2, alpha=1,
+               inference_method=test_method, n_iter=test_n_iter)
     trainer = Over(n_states=10, n_features=10, n_edge_features=2,
                    C=C, max_iter=max_iter, verbose=verbose, check_every=check_every)
-    crf = HCRF(n_states=10, n_features=10, n_edge_features=2, alpha=1,
-               inference_method='trw', n_iter=100)
 
     x_train, y_train, y_train_full, x_test, y_test = \
         load_syntetic(dataset, n_train, n_train)
@@ -233,8 +234,8 @@ def syntetic_over(n_train=100, C=1, dataset=1,
 
     start = time()
     trainer.fit(x_train, y_train,
-                train_scorer=lambda w: compute_score(crf, w, x_train, y_train, invert=True),
-                test_scorer=lambda w: compute_score(crf, w, x_test, y_test, invert=True))
+                train_scorer=lambda w: compute_score(crf, w, x_train, y_train, invert=True, relaxed=relaxed_test),
+                test_scorer=lambda w: compute_score(crf, w, x_test, y_test, invert=True, relaxed=relaxed_test))
     stop = time()
 
     logger.info('testing')
