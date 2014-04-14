@@ -9,3 +9,5 @@ logs
 report
 tasks
 launcher.py
+build
+chain_opt.cpp
