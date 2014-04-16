@@ -321,8 +321,8 @@ class HCRF(StructuredModel):
                 y_ret = Label(h, None, y.weights, True, relaxed)
             elif self.inference_method == 'trw':
                 from trw import trw
-                h = trw(-unary_potentials, edges, -pairwise_potentials, max_iter=self.n_iter)
-                y_ret = Label(h.astype(np.int32), None, y.weights, True)
+                h = trw(-unary_potentials, edges, -pairwise_potentials, max_iter=self.n_iter, relaxed=relaxed)
+                y_ret = Label(h, None, y.weights, True, relaxed)
 
 #            count = h[2]
 #            energy = np.dot(w, self.joint_feature(x, y_ret)) + self.loss(y, y_ret)
@@ -413,6 +413,6 @@ class HCRF(StructuredModel):
         elif self.inference_method == 'trw':
             from trw import trw
             h = trw(-unary_potentials, edges, -pairwise_potentials, max_iter=self.n_iter)
-            y_ret = Label(h.astype(np.int32), None, None, True)
+            y_ret = Label(h, None, None, True)
 
         return y_ret

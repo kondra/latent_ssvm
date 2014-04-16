@@ -120,12 +120,12 @@ def trw(node_weights, edges, edge_weights,
         print 'number of unconsistent labels: {}'.format(np.sum(mean_x == 0.5)/2)
 
     if relaxed:
-        return mean_x
+        return (mean_x,)
     else:
         if return_energy_history:
-            return get_labelling(mean_x), energy_history
+            return get_labelling(mean_x).astype(np.int32), energy_history
         else:
-            return get_labelling(mean_x)
+            return get_labelling(mean_x).astype(np.int32)
 
 
 class TRW(object):
