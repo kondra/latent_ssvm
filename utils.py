@@ -32,7 +32,10 @@ def load_msrc(n_full, n_train):
                    y[:, 1].astype(np.float64) / np.sum(y[:, 1]), True)
              for y in y_test]
 
-    train_mask = load_msrc_weak_train_mask(MSRC_DATA_PATH, n_full)[:n_train]
+    if n_train != n_full:
+        train_mask = load_msrc_weak_train_mask(MSRC_DATA_PATH, n_full)[:n_train]
+    else:
+        train_mask = [True for i in xrange(len(y_train_raw))]
     y_train_full = [Label(y[:, 0].astype(np.int32), None, y[:, 1], True)
                    for y in y_train_raw]
     y_train = []
