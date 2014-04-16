@@ -217,9 +217,8 @@ class Over(object):
             w += alpha * dw
             objectvie = self.C * objective + np.sum(w ** 2) / 2
 
-            self.logger.info('Compute train and test scores')
-
             if iteration and (iteration % self.check_every == 0):
+                self.logger.info('Compute train and test scores')
                 self.train_score.append(train_scorer(w))
                 self.logger.info('Train SCORE: %f', self.train_score[-1])
                 self.test_score.append(test_scorer(w))
