@@ -215,7 +215,7 @@ class Over(object):
             dw -= w / self.C
 
             w += alpha * dw
-            objectvie = self.C * objective + np.sum(w ** 2) / 2
+            objective = self.C * objective + np.sum(w ** 2) / 2
 
             if iteration and (iteration % self.check_every == 0):
                 self.logger.info('Compute train and test scores')
