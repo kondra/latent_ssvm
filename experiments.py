@@ -8,6 +8,7 @@ from one_slack_ssvm import OneSlackSSVM
 from latent_structured_svm import LatentSSVM
 from subgradient_ssvm import SubgradientSSVM
 from over import Over
+from over_weak import OverWeak
 from subgrad import Subgrad
 from heterogenous_crf import HCRF
 
@@ -240,8 +241,8 @@ def syntetic_over(n_train=100, C=1, dataset=1,
 
     logger.info('testing')
 
-    test_score = compute_score(crf, trainer.w, x_test, y_test, invert=True)
-    train_score = compute_score(crf, trainer.w, x_train, y_train, invert=True)
+    test_score = compute_score(crf, trainer.w, x_test, y_test, invert=True, relaxed=relaxed_test)
+    train_score = compute_score(crf, trainer.w, x_train, y_train, invert=True, relaxed=relaxed_test)
 
     logger.info('========================================')
     logger.info('train score: %f', train_score)
@@ -361,6 +362,66 @@ def syntetic_subgradient(n_train=100, dataset=1, n_jobs=4, C=1,
     meta_data['annotation_type'] = 'full'
     meta_data['label_type'] = 'full'
     meta_data['trainer'] = 'subgradient'
+    meta_data['train_score'] = train_score
+    meta_data['test_score'] = test_score
+
+    return ExperimentResult(exp_data, meta_data)
+
+
+@experiment
+def syntetic_over_weak(n_train_full=10, n_train=100, C=1, dataset=1,
+                       max_iter=100, verbose=1,
+                       test_samples=10, check_every=10,
+                       test_method='gco', test_n_iter=5, relaxed_test=False,
+                       alpha=1, n_iter=5, complete_every=10):
+    # save parameters as meta
+    meta_data = locals()
+
+    logger = logging.getLogger(__name__)
+
+    crf_test = HCRF(n_states=10, n_features=10, n_edge_features=2,
+                    inference_method=test_method, n_iter=test_n_iter)
+    crf_latent = HCRF(n_states=10, n_features=10, n_edge_features=2,
+                      alpha=alpha, inference_method='gco', n_iter=n_iter)
+    trainer = OverWeak(crf_latent, n_states=10, n_features=10, n_edge_features=2,
+                       C=C, max_iter=max_iter, verbose=verbose, check_every=check_every,
+                       complete_every=complete_every, alpha_kappa=alpha)
+
+    x_train, y_train, y_train_full, x_test, y_test = \
+        load_syntetic(dataset, n_train_full, n_train)
+    x_test = x_test[:test_samples]
+    y_test = y_test[:test_samples]
+
+    logger.info('start training')
+
+    start = time()
+    trainer.fit(x_train, y_train,
+                train_scorer=lambda w: compute_score(crf_test, w, x_train, y_train_full, relaxed=relaxed_test),
+                test_scorer=lambda w: compute_score(crf_test, w, x_test, y_test, relaxed=relaxed_test))
+    stop = time()
+
+    logger.info('testing')
+
+    test_score = compute_score(crf_test, trainer.w, x_test, y_test)
+    train_score = compute_score(crf_test, trainer.w, x_train, y_train)
+
+    logger.info('========================================')
+    logger.info('train score: %f', train_score)
+    logger.info('test score: %f', test_score)
+
+    exp_data = {}
+
+    exp_data['timestamps'] = trainer.timestamps
+    exp_data['objective'] = trainer.objective_curve
+    exp_data['w'] = trainer.w
+    exp_data['train_scores'] = trainer.train_score
+    exp_data['test_scores'] = trainer.test_score
+    exp_data['w_history'] = trainer.w_history
+
+    meta_data['dataset_name'] = 'syntetic'
+    meta_data['annotation_type'] = 'full+weak'
+    meta_data['label_type'] = 'image-level labelling'
+    meta_data['trainer'] = 'komodakis+latent+kappa'
     meta_data['train_score'] = train_score
     meta_data['test_score'] = test_score
 
