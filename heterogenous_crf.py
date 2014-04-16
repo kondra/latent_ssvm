@@ -264,10 +264,11 @@ class HCRF(StructuredModel):
 
     def loss(self, y, y_hat):
         if y.full_labeled:
-            if isinstance(y.full, tuple):
+            if isinstance(y_hat.full, tuple):
                 w = y.weights
-                y, y_hat = y.full, y_hat.full
-                return np.sum(w * (1 - y_hat[0:y.shape[0], y]))
+                y, y_hat = y.full, y_hat.full[0]
+                gx = np.indices(y.shape)
+                return np.sum(w * (1 - y_hat[gx, y]))
 
             return np.sum(y.weights * (y.full != y_hat.full))
         else:
