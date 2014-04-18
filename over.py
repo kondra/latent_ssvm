@@ -7,8 +7,7 @@ from sklearn.utils.extmath import safe_sparse_dot
 from chain_opt import optimize_chain_fast
 
 
-def optimize_chain(chain, unary_cost, pairwise_cost, edge_index,
-                   return_energy=True):
+def optimize_chain(chain, unary_cost, pairwise_cost, edge_index):
     n_nodes = chain.shape[0]
     n_states = unary_cost.shape[1]
 
@@ -78,9 +77,12 @@ class Over(object):
             unaries[mask, label] -= weights[mask]
         return unaries
 
-    def _joint_features(self, chain, x, y, edge_index):
+    def _joint_features(self, chain, x, y, edge_index, contains_node):
         features = self._get_features(x)[chain,:]
         n_nodes = features.shape[0]
+
+        for i, p in enumerate(chain):
+            features[i,:] *= 1.0 / len(contains_node[p])
 
         e_ind = []
         edges = []
@@ -123,19 +125,16 @@ class Over(object):
         return np.hstack([unaries_acc.ravel(), pw.ravel()])
 
     def fit(self, X, Y, train_scorer, test_scorer):
-        n_nodes = X[0][0].shape[0]
-        width = 20
-        height = 20
-    
-        assert n_nodes == width * height
-    
+        self.logger.info('Initialization')
+
         contains_node = []
         lambdas = []
         chains = []
         edge_index = []
         y_hat = []
 
-        self.logger.info('Initialization')
+        width = 20
+        height = 20
     
         for k in xrange(len(X)):
             _edge_index = {}
@@ -180,8 +179,7 @@ class Over(object):
         self.test_score = []
         self.w_history = []
 
-        alpha = 0.1
-        mult = 0.5
+        learning_rate = 0.1
 
         for iteration in xrange(self.max_iter):
             self.logger.info('Iteration %d', iteration)
@@ -192,29 +190,28 @@ class Over(object):
 
             for k in xrange(len(X)):
                 x, y = X[k], Y[k]
+                n_nodes = x[0].shape[0]
 
-                unaries = self._get_unary_potentials(x, w)
-                unaries_ = self._loss_augment_unaries(unaries, y.full, y.weights)
+                unaries = self._loss_augment_unaries(self._get_unary_potentials(x, w), y.full, y.weights)
                 pairwise = self._get_pairwise_potentials(x, w)
+                for p in xrange(n_nodes):
+                    unaries[p,:] *= 1.0 / len(contains_node[k][p])
 
                 objective += np.dot(w, self._joint_features_full(x, y.full))
+                dw -= self._joint_features_full(x, y.full)
 
                 for i in xrange(len(chains[k])):
                     y_hat[k][i], energy = optimize_chain(chains[k][i],
-                                                         lambdas[k][i] + mult * unaries_[chains[k][i],:],
+                                                         lambdas[k][i] + unaries[chains[k][i],:],
                                                          pairwise,
                                                          edge_index[k])
 
-                    _psi = self._joint_features(chains[k][i], x, y.full[chains[k][i]], edge_index[k]) \
-                        - self._joint_features(chains[k][i], x, y_hat[k][i], edge_index[k])
-                    _psi[:self.n_features * self.n_states] *= mult
-
+                    dw += self._joint_features(chains[k][i], x, y_hat[k][i], edge_index[k], contains_node[k])
                     objective -= energy
-                    dw -= _psi
 
             dw -= w / self.C
 
-            w += alpha * dw
+            w += learning_rate * dw
             objective = self.C * objective + np.sum(w ** 2) / 2
 
             if iteration and (iteration % self.check_every == 0):
@@ -227,23 +224,23 @@ class Over(object):
             self.logger.info('Update lambda')
 
             for k in xrange(len(X)):
+                n_nodes = X[k][0].shape[0]
                 lambda_sum = np.zeros((n_nodes, self.n_states), dtype=np.float64)
 
                 for p in xrange(n_nodes):
-                    assert len(contains_node[k][p]) == 2
                     for i in contains_node[k][p]:
                         pos = np.where(chains[k][i] == p)[0][0]
-                        lambda_sum[p, y_hat[k][i][pos]] += 1
+                        lambda_sum[p, y_hat[k][i][pos]] += 1.0 / len(contains_node[k][p])
 
                 for i in xrange(len(chains[k])):
                     N = lambdas[k][i].shape[0]
 
-                    lambdas[k][i][np.ogrid[:N], y_hat[k][i]] += alpha
-                    lambdas[k][i] -= alpha * mult * lambda_sum[chains[k][i],:]
+                    lambdas[k][i][np.ogrid[:N], y_hat[k][i]] += learning_rate
+                    lambdas[k][i] -= learning_rate * lambda_sum[chains[k][i],:]
 
             self.logger.info('diff: %f', np.sum((w-self.w)**2))
             if iteration:
-                alpha = max(1e-10, 1.0 / iteration)
+                learning_rate = max(1e-6, 1.0 / iteration)
 
             self.timestamps.append(time.time() - self.start_time)
             self.objective_curve.append(objective)
