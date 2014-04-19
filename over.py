@@ -78,12 +78,9 @@ class Over(object):
             unaries[mask, label] -= weights[mask]
         return unaries
 
-    def _joint_features(self, chain, x, y, edge_index, contains_node):
+    def _joint_features(self, chain, x, y, edge_index, multiplier):
         features = self._get_features(x)[chain,:]
         n_nodes = features.shape[0]
-
-        for i, p in enumerate(chain):
-            features[i,:] *= 1.0 / len(contains_node[p])
 
         e_ind = []
         edges = []
@@ -96,6 +93,9 @@ class Over(object):
 
         unary_marginals = np.zeros((n_nodes, self.n_states), dtype=np.float64)
         unary_marginals[np.ogrid[:n_nodes], y] = 1
+        mult = multiplier[chain]
+        mult.shape = (mult.shape[0], 1)
+        unary_marginals *= mult
         unaries_acc = safe_sparse_dot(unary_marginals.T, features,
                                       dense_output=True)
 
@@ -137,14 +137,19 @@ class Over(object):
 
         y_hat = []
         lambdas = []
+        multiplier = []
         for k in xrange(len(X)):
             _lambdas = []
             _y_hat = []
+            _multiplier = []
+            for p in xrange(X[k][0].shape[0]):
+                _multiplier.append(1.0 / len(contains_node[k][p]))
             for chain in chains[k]:
                 _lambdas.append(np.zeros((len(chain), self.n_states)))
                 _y_hat.append(np.zeros(len(chain)))
             lambdas.append(_lambdas)
             y_hat.append(_y_hat)
+            multiplier.append(np.array(_multiplier))
 
         w = np.zeros(self.size_w)
         self.w = w.copy()
@@ -166,13 +171,14 @@ class Over(object):
             dw = np.zeros(w.shape)
 
             for k in xrange(len(X)):
+                self.logger.info('object %d', k)
                 x, y = X[k], Y[k]
                 n_nodes = x[0].shape[0]
 
                 unaries = self._loss_augment_unaries(self._get_unary_potentials(x, w), y.full, y.weights)
                 pairwise = self._get_pairwise_potentials(x, w)
                 for p in xrange(n_nodes):
-                    unaries[p,:] *= 1.0 / len(contains_node[k][p])
+                    unaries[p,:] *= multiplier[k][p]
 
                 objective += np.dot(w, self._joint_features_full(x, y.full))
                 dw -= self._joint_features_full(x, y.full)
@@ -183,7 +189,7 @@ class Over(object):
                                                          pairwise,
                                                          edge_index[k])
 
-                    dw += self._joint_features(chains[k][i], x, y_hat[k][i], edge_index[k], contains_node[k])
+                    dw += self._joint_features(chains[k][i], x, y_hat[k][i], edge_index[k], multiplier[k])
                     objective -= energy
 
             dw -= w / self.C
@@ -207,7 +213,7 @@ class Over(object):
                 for p in xrange(n_nodes):
                     for i in contains_node[k][p]:
                         pos = np.where(chains[k][i] == p)[0][0]
-                        lambda_sum[p, y_hat[k][i][pos]] += 1.0 / len(contains_node[k][p])
+                        lambda_sum[p, y_hat[k][i][pos]] += multiplier[k][p]
 
                 for i in xrange(len(chains[k])):
                     N = lambdas[k][i].shape[0]
