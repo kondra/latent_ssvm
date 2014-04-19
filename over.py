@@ -5,6 +5,7 @@ import numpy as np
 
 from sklearn.utils.extmath import safe_sparse_dot
 from chain_opt import optimize_chain_fast
+from graph_utils import decompose_graph, decompose_grid_graph
 
 
 def optimize_chain(chain, unary_cost, pairwise_cost, edge_index):
@@ -127,46 +128,17 @@ class Over(object):
     def fit(self, X, Y, train_scorer, test_scorer):
         self.logger.info('Initialization')
 
-        contains_node = []
-        lambdas = []
-        chains = []
-        edge_index = []
-        y_hat = []
+        contains_node, chains, edge_index = decompose_grid_graph(X)
 
-        width = 20
-        height = 20
-    
+        y_hat = []
+        lambdas = []
         for k in xrange(len(X)):
-            _edge_index = {}
-            for i, edge in enumerate(self._get_edges(X[k])):
-                _edge_index[(edge[0], edge[1])] = i
-    
-            _y_hat = []
-            _chains = []
             _lambdas = []
-            _contains = [[] for i in xrange(n_nodes)]
-            for i in xrange(0, n_nodes, width):
-                _chains.append(np.arange(i, i + width))
-                assert _chains[-1].shape[0] == width
-                _lambdas.append(np.zeros((width, self.n_states)))
-                _y_hat.append(np.zeros(width))
-                tree_number = len(_chains) - 1
-                for node in _chains[-1]:
-                    _contains[node].append(tree_number)
-    
-            for i in xrange(0, width):
-                _chains.append(np.arange(i, n_nodes, width))
-                assert _chains[-1].shape[0] == height
-                _lambdas.append(np.zeros((height, self.n_states)))
-                _y_hat.append(np.zeros(height))
-                tree_number = len(_chains) - 1
-                for node in _chains[-1]:
-                    _contains[node].append(tree_number)
-    
-            contains_node.append(_contains)
+            _y_hat = []
+            for chain in chains[k]:
+                _lambdas.append(np.zeros((len(chain), self.n_states)))
+                _y_hat.append(np.zeros(len(chain)))
             lambdas.append(_lambdas)
-            chains.append(_chains)
-            edge_index.append(_edge_index)
             y_hat.append(_y_hat)
 
         w = np.zeros(self.size_w)
