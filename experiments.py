@@ -385,6 +385,59 @@ def syntetic_over_weak(n_train_full=10, n_train=100, C=1, dataset=1,
     return ExperimentResult(exp_data, meta_data)
 
 
+@experiment
+def msrc_over(n_train=276, C=100,
+              max_iter=1000, check_every=50, verbose=1,
+              test_method='gco', test_n_iter=5, relaxed_test=False):
+    # save parameters as meta
+    meta_data = locals()
+
+    logger = logging.getLogger(__name__)
+
+    crf = HCRF(n_states=24, n_features=2028, n_edge_features=4, alpha=1,
+               inference_method=test_method, n_iter=test_n_iter)
+    trainer = Over(n_states=24, n_features=2028, n_edge_features=4,
+                   C=C, max_iter=max_iter, verbose=verbose, check_every=check_every)
+
+    x_train, y_train, y_train_full, x_test, y_test = \
+        load_msrc(n_train, n_train)
+
+    logger.info('start training')
+
+    start = time()
+    trainer.fit(x_train, y_train_full,
+                train_scorer=lambda w: compute_score(crf, w, x_train, y_train, invert=True, relaxed=relaxed_test),
+                test_scorer=lambda w: compute_score(crf, w, x_test, y_test, invert=True, relaxed=relaxed_test))
+    stop = time()
+
+    logger.info('testing')
+
+    test_score = compute_score(crf, trainer.w, x_test, y_test, invert=True, relaxed=relaxed_test)
+    train_score = compute_score(crf, trainer.w, x_train, y_train, invert=True, relaxed=relaxed_test)
+
+    logger.info('========================================')
+    logger.info('train score: %f', train_score)
+    logger.info('test score: %f', test_score)
+
+    exp_data = {}
+
+    exp_data['timestamps'] = trainer.timestamps
+    exp_data['objective'] = trainer.objective_curve
+    exp_data['w'] = trainer.w
+    exp_data['train_scores'] = trainer.train_score
+    exp_data['test_scores'] = trainer.test_score
+    exp_data['w_history'] = trainer.w_history
+
+    meta_data['dataset_name'] = 'msrc'
+    meta_data['annotation_type'] = 'full'
+    meta_data['label_type'] = 'full'
+    meta_data['trainer'] = 'komodakis'
+    meta_data['train_score'] = train_score
+    meta_data['test_score'] = test_score
+
+    return ExperimentResult(exp_data, meta_data)
+
+
 #@experiment
 #def syntetic_subgrad(n_train=100, mu=1, dataset=1,
 #                     max_iter=100, verbose=1):
