@@ -56,12 +56,12 @@ def monotonic_chains(n_nodes, edges):
             chains.append([])
             k += 1
 
-    chains = chains[:-1]
+    _chains = []
+    for chain in chains[:-1]:
+        assert len(chain) > 0
+        _chains.append(np.array(chain, dtype=np.int32))
 
-    for k in xrange(len(chains)):
-        assert len(chains[k]) > 0
-
-    return contains, chains, edge_index
+    return contains, _chains, edge_index
 
 
 def decompose_graph(X):
