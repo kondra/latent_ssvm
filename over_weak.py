@@ -5,13 +5,13 @@ import itertools
 
 import numpy as np
 
+from joblib import Parallel, delayed
 from sklearn.utils.extmath import safe_sparse_dot
 from chain_opt import optimize_chain_fast
-from commom import latent
+from common import latent
 
 
-def optimize_chain(chain, unary_cost, pairwise_cost, edge_index,
-                   return_energy=True):
+def optimize_chain(chain, unary_cost, pairwise_cost, edge_index):
     n_nodes = chain.shape[0]
     n_states = unary_cost.shape[1]
 
@@ -36,9 +36,12 @@ def optimize_chain(chain, unary_cost, pairwise_cost, edge_index,
     return x, np.max(p[:,n_nodes - 1])
 
 
-def optimize_kappa(x, y, mu, alpha, n_nodes, n_states):
+def optimize_kappa(y, mu, alpha, n_nodes, n_states):
     unaries = mu
+
     c = np.sum(y.weights) / float(n_states)
+    c *= alpha
+
     for label in xrange(n_states):
         if label not in y.weak:
             unaries[:,label] += y.weights * alpha
@@ -48,10 +51,12 @@ def optimize_kappa(x, y, mu, alpha, n_nodes, n_states):
     all_labels = set([l for l in xrange(n_states)])
     gt_labels = set(y.weak)
 
-    for k in xrange(len(y.weak)):
+    for k in xrange(len(y.weak) + 1):
         for l in itertools.combinations(y.weak, k):
             labels = list(all_labels - set(l))
-            y_hat = np.argmax(unaries[:,labels], axis=1)
+            t_unaries = unaries.copy()
+            t_unaries[:, labels] = -np.Inf
+            y_hat = np.argmax(t_unaries, axis=1)
             energy = np.sum(np.max(unaries[:,labels], axis=1))
             present_labels = set(np.unique(y_hat))
             if len(present_labels.intersection(gt_labels)):
@@ -80,6 +85,7 @@ class OverWeak(object):
         self.check_every = check_every
         self.complete_every = complete_every
         self.alpha_kappa = alpha_kappa
+        self.n_jobs = 4
 
     def _get_edges(self, x):
         return x[1]
@@ -207,7 +213,7 @@ class OverWeak(object):
             y_hat.append(_y_hat)
 
             if not y.full_labeled:
-                mu[k] = np.zeros((n_nodes, n_states))
+                mu[k] = np.zeros((n_nodes, self.n_states))
 
         w = np.zeros(self.size_w)
         self.w = w.copy()
@@ -252,13 +258,13 @@ class OverWeak(object):
                         objective += energy
                         dw += _psi
                 else:
-                    dmu = np.zeros((n_nodes, n_states))
+                    dmu = np.zeros((n_nodes, self.n_states))
 
                     unaries = self._get_unary_potentials(x, w) - mu[k]
                     pairwise = self._get_pairwise_potentials(x, w)
 
-                    objective -= np.dot(w, self._joint_features_full(x, y.full))#
-                    dw -= self._joint_features_full(x, y.full)#
+                    objective -= np.dot(w, self._joint_features_full(x, y.full))
+                    dw -= self._joint_features_full(x, y.full)
 
                     for i in xrange(len(chains[k])):
                         y_hat[k][i], energy = optimize_chain(chains[k][i],
@@ -272,34 +278,19 @@ class OverWeak(object):
                         objective += energy
                         dw += _psi
 
-                        dmu[chains[k],:] -= y_hat[k][i] * mult
+                        dmu[chains[k][i], y_hat[k][i]] -= mult
 
-                    y_hat_kappa, energy = optimize_kappa(x, y, mu[k], self.alpha_kappa)
+                    y_hat_kappa, energy = optimize_kappa(y, mu[k], self.alpha_kappa, n_nodes, self.n_states)
 
                     objective += energy
-                    dmu += y_hat_kappa
+                    dmu[np.ogrid[:dmu.shape[0]], y_hat_kappa] += 1
 
                     mu[k] -= alpha * dmu
 
             dw += w / self.C
 
             w -= alpha * dw
-            objectvie = self.C * objective + np.sum(w ** 2) / 2
-
-            if iteration % self.complete_every == 0:
-                self.logger.info('Complete latent variables')
-                Y_new = Parallel(n_jobs=self.n_jobs, verbose=0, max_nbytes=1e8)(
-                    delayed(latent)(self.model, x, y, w) for x, y in zip(X, Y))
-                changes = np.sum([np.any(y_new.full != y.full) for y_new, y in zip(Y_new, Y)])
-                self.logger.info('changes in latent variables: %d', changes)
-                Y = Y_new
-
-            if iteration and (iteration % self.check_every == 0):
-                self.logger.info('Compute train and test scores')
-                self.train_score.append(train_scorer(w))
-                self.logger.info('Train SCORE: %f', self.train_score[-1])
-                self.test_score.append(test_scorer(w))
-                self.logger.info('Test SCORE: %f', self.test_score[-1])
+            objective = self.C * objective + np.sum(w ** 2) / 2
 
             self.logger.info('Update lambda')
 
@@ -317,6 +308,21 @@ class OverWeak(object):
 
                     lambdas[k][i][np.ogrid[:N], y_hat[k][i]] += alpha
                     lambdas[k][i] -= alpha * mult * lambda_sum[chains[k][i],:]
+
+            if iteration % self.complete_every == 0:
+                self.logger.info('Complete latent variables')
+                Y_new = Parallel(n_jobs=self.n_jobs, verbose=0, max_nbytes=1e8)(
+                    delayed(latent)(self.model, x, y, w) for x, y in zip(X, Y))
+                changes = np.sum([np.any(y_new.full != y.full) for y_new, y in zip(Y_new, Y)])
+                self.logger.info('changes in latent variables: %d', changes)
+                Y = Y_new
+
+            if iteration and (iteration % self.check_every == 0):
+                self.logger.info('Compute train and test scores')
+                self.train_score.append(train_scorer(w))
+                self.logger.info('Train SCORE: %f', self.train_score[-1])
+                self.test_score.append(test_scorer(w))
+                self.logger.info('Test SCORE: %f', self.test_score[-1])
 
             self.logger.info('diff: %f', np.sum((w-self.w)**2))
             if iteration:
