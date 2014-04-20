@@ -37,7 +37,7 @@ def optimize_chain(chain, unary_cost, pairwise_cost, edge_index):
 
 
 def optimize_kappa(y, mu, alpha, n_nodes, n_states):
-    unaries = mu
+    unaries = mu.copy()
 
     c = np.sum(y.weights) / float(n_states)
     c *= alpha
@@ -54,8 +54,9 @@ def optimize_kappa(y, mu, alpha, n_nodes, n_states):
     for k in xrange(len(y.weak) + 1):
         for l in itertools.combinations(y.weak, k):
             labels = list(all_labels - set(l))
+            l = list(l)
             t_unaries = unaries.copy()
-            t_unaries[:, labels] = -np.Inf
+            t_unaries[:, l] = -np.Inf
             y_hat = np.argmax(t_unaries, axis=1)
             energy = np.sum(np.max(unaries[:,labels], axis=1))
             present_labels = set(np.unique(y_hat))
@@ -192,7 +193,7 @@ class OverWeak(object):
                 _chains.append(np.arange(i, i + width))
                 assert _chains[-1].shape[0] == width
                 _lambdas.append(np.zeros((width, self.n_states)))
-                _y_hat.append(np.zeros(width))
+                _y_hat.append(np.zeros(width, dtype=np.int32))
                 tree_number = len(_chains) - 1
                 for node in _chains[-1]:
                     _contains[node].append(tree_number)
@@ -201,7 +202,7 @@ class OverWeak(object):
                 _chains.append(np.arange(i, n_nodes, width))
                 assert _chains[-1].shape[0] == height
                 _lambdas.append(np.zeros((height, self.n_states)))
-                _y_hat.append(np.zeros(height))
+                _y_hat.append(np.zeros(height, dtype=np.int32))
                 tree_number = len(_chains) - 1
                 for node in _chains[-1]:
                     _contains[node].append(tree_number)
@@ -257,7 +258,7 @@ class OverWeak(object):
 
                         objective += energy
                         dw += _psi
-                else:
+                elif iteration > 50:
                     dmu = np.zeros((n_nodes, self.n_states))
 
                     unaries = self._get_unary_potentials(x, w) - mu[k]
@@ -306,8 +307,8 @@ class OverWeak(object):
                 for i in xrange(len(chains[k])):
                     N = lambdas[k][i].shape[0]
 
-                    lambdas[k][i][np.ogrid[:N], y_hat[k][i]] += alpha
-                    lambdas[k][i] -= alpha * mult * lambda_sum[chains[k][i],:]
+                    lambdas[k][i][np.ogrid[:N], y_hat[k][i]] -= alpha
+                    lambdas[k][i] += alpha * mult * lambda_sum[chains[k][i],:]
 
             if iteration % self.complete_every == 0:
                 self.logger.info('Complete latent variables')
