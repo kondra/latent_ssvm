@@ -1,40 +1,7 @@
 import numpy as np
 
 from graph_utils import decompose_graph, decompose_grid_graph
-
-
-def optimize_chain(chain, unary_cost, pairwise_cost, edge_index):
-    n_nodes = chain.shape[0]
-    n_states = unary_cost.shape[1]
-
-    p = np.zeros((n_states, n_nodes))
-    track = np.zeros((n_states, n_nodes), dtype=np.int32)
-    p[:,0] = unary_cost[0,:]
-    track[:,0] = -1
-
-    for i in xrange(1, n_nodes):
-        p[:,i] = unary_cost[i,:]
-        p_cost = pairwise_cost[edge_index[(chain[i - 1], chain[i])]]
-        for k in xrange(n_states):
-            p[k,i] += np.max(p[:,i - 1] + p_cost[:,k])
-            track[k,i] = np.argmax(p[:,i - 1] + p_cost[:,k])
-
-    x = np.zeros(n_nodes, dtype=np.int32)
-    current = np.argmax(p[:,n_nodes - 1])
-    for i in xrange(n_nodes - 1, -1, -1):
-        x[i] = current
-        current = track[current,i]
-
-    return x, np.max(p[:,n_nodes - 1])
-
-
-def get_labelling(relaxed_x):
-    n_nodes = relaxed_x.shape[0]
-    x = np.zeros(n_nodes)
-    for i in xrange(n_nodes):
-        x[i] = np.where(relaxed_x[i,:])[0][0]
-    return x.astype(np.int32)
-
+from trw_utils import optimize_chain, optimize_kappa
 
 def trw(node_weights, edges, edge_weights,
         max_iter=100, verbose=0, tol=1e-3):
