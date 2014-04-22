@@ -93,9 +93,7 @@ class Over(object):
 
         unary_marginals = np.zeros((n_nodes, self.n_states), dtype=np.float64)
         unary_marginals[np.ogrid[:n_nodes], y] = 1
-        mult = multiplier[chain]
-        mult.shape = (mult.shape[0], 1)
-        unary_marginals *= mult
+        unary_marginals *= multiplier[chain,:]
         unaries_acc = safe_sparse_dot(unary_marginals.T, features,
                                       dense_output=True)
 
@@ -149,7 +147,9 @@ class Over(object):
                 _y_hat.append(np.zeros(len(chain)))
             lambdas.append(_lambdas)
             y_hat.append(_y_hat)
-            multiplier.append(np.array(_multiplier))
+            _multiplier = np.array(_multiplier)
+            _multiplier.shape = (n_nodes, 1)
+            multiplier.append(_multiplier)
 
         w = np.zeros(self.size_w)
         self.w = w.copy()
@@ -176,9 +176,8 @@ class Over(object):
                 n_nodes = x[0].shape[0]
 
                 unaries = self._loss_augment_unaries(self._get_unary_potentials(x, w), y.full, y.weights)
+                unaries *= multiplier[k]
                 pairwise = self._get_pairwise_potentials(x, w)
-                for p in xrange(n_nodes):
-                    unaries[p,:] *= multiplier[k][p]
 
                 objective += np.dot(w, self._joint_features_full(x, y.full))
                 dw -= self._joint_features_full(x, y.full)
