@@ -149,7 +149,8 @@ class OverWeak(object):
         self.test_score = []
         self.w_history = []
 
-        learning_rate = 0.1
+        learning_rate1 = 0.1
+        learning_rate2 = 0.1
         use_latent_first_iter = 50
 
         for iteration in xrange(self.max_iter):
@@ -209,11 +210,11 @@ class OverWeak(object):
                     objective += energy
                     dmu[np.ogrid[:dmu.shape[0]], y_hat_kappa] += 1
 
-                    mu[k] -= learning_rate * dmu
+                    mu[k] -= learning_rate2 * dmu
 
             dw += w / self.C
 
-            w -= learning_rate * dw
+            w -= learning_rate1 * dw
             objective = self.C * objective + np.sum(w ** 2) / 2
 
             self.logger.info('Update lambda')
@@ -230,8 +231,8 @@ class OverWeak(object):
                 for i in xrange(len(chains[k])):
                     N = lambdas[k][i].shape[0]
 
-                    lambdas[k][i][np.ogrid[:N], y_hat[k][i]] -= learning_rate
-                    lambdas[k][i] += learning_rate * lambda_sum[chains[k][i],:]
+                    lambdas[k][i][np.ogrid[:N], y_hat[k][i]] -= learning_rate2
+                    lambdas[k][i] += learning_rate2 * lambda_sum[chains[k][i],:]
 
             if iteration % self.complete_every == 0:
                 self.logger.info('Complete latent variables')
@@ -250,7 +251,8 @@ class OverWeak(object):
 
             self.logger.info('diff: %f', np.sum((w-self.w)**2))
             if iteration:
-                learning_rate = 1.0 / np.sqrt(iteration)
+                learning_rate1 = 1.0 / iteration
+                learning_rate2 = 1.0 / np.sqrt(iteration)
 
             self.timestamps.append(time.time() - self.start_time)
             self.objective_curve.append(objective)
