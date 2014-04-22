@@ -223,7 +223,7 @@ class Over(object):
 
             self.logger.info('diff: %f', np.sum((w-self.w)**2))
             if iteration:
-                learning_rate = max(1e-6, 1.0 / iteration)
+                learning_rate = 1.0 / np.sqrt(iteration)
 
             self.timestamps.append(time.time() - self.start_time)
             self.objective_curve.append(objective)
