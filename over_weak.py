@@ -106,7 +106,7 @@ class OverWeak(object):
 
         return np.hstack([unaries_acc.ravel(), pw.ravel()])
 
-    def fit(self, X, Y, train_scorer, test_scorer):
+    def fit(self, X, Y, train_scorer, test_scorer, decompose='general'):
         self.logger.info('Initialization')
 
         if decompose == 'general':
