@@ -49,30 +49,17 @@ def optimize_kappa(y, mu, alpha, n_nodes, n_states):
         for l in itertools.combinations(y.weak, k):
             labels = list(all_labels - set(l))
             l = list(l)
-#            print 'l'
-#            print l
-#            print 'labels'
-#            print labels
             t_unaries = unaries.copy()
             t_unaries[:, l] = -np.Inf
             y_hat = np.argmax(t_unaries, axis=1)
-#            print 'y_hat'
-#            print y_hat.reshape((20,20))
             energy = np.sum(np.max(unaries[:,labels], axis=1))
             energy2 = np.sum(t_unaries[np.ogrid[:unaries.shape[0]],y_hat])
-#            print 'energy = {}'.format(energy)
-#            print 'energy2 = {}'.format(energy2)
             present_labels = set(np.unique(y_hat))
-#            print 'present'
-#            print present_labels
             if len(present_labels.intersection(gt_labels)):
                 energy -= c
             if energy > max_energy:
                 max_energy = energy
                 best_y = y_hat
-
-#    print y.weak
-#    print mu
 
     return best_y, max_energy
 
@@ -164,4 +151,4 @@ def trw(node_weights, edges, edge_weights, y,
 
         print 'energy {}'.format(E)
 
-    return lambda_sum
+    return lambda_sum, y_hat_kappa
