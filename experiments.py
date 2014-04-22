@@ -321,6 +321,7 @@ def syntetic_over(n_train=100, C=1, dataset=1,
     meta_data['trainer'] = 'komodakis'
     meta_data['train_score'] = train_score
     meta_data['test_score'] = test_score
+    meta_data['time_elapsed'] = time_elapsed
 
     return ExperimentResult(exp_data, meta_data)
 
@@ -381,6 +382,7 @@ def syntetic_over_weak(n_train_full=10, n_train=100, C=1, dataset=1,
     meta_data['trainer'] = 'komodakis+latent+kappa'
     meta_data['train_score'] = train_score
     meta_data['test_score'] = test_score
+    meta_data['time_elapsed'] = time_elapsed
 
     return ExperimentResult(exp_data, meta_data)
 
@@ -434,6 +436,7 @@ def msrc_over(n_train=276, C=100,
     meta_data['trainer'] = 'komodakis'
     meta_data['train_score'] = train_score
     meta_data['test_score'] = test_score
+    meta_data['time_elapsed'] = time_elapsed
 
     return ExperimentResult(exp_data, meta_data)
 
