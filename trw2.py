@@ -1,6 +1,5 @@
 import numpy as np
 import itertools
-import sys
 
 from graph_utils import decompose_graph, decompose_grid_graph
 
@@ -69,11 +68,11 @@ def get_labelling(relaxed_x):
     x = np.zeros(n_nodes)
     for i in xrange(n_nodes):
         x[i] = np.where(relaxed_x[i,:])[0][0]
-    return x
+    return x.astype(np.int32)
 
 
 def trw(node_weights, edges, edge_weights, y,
-        max_iter=100, verbose=0):
+        max_iter=100, verbose=0, tol=1e-3):
 
     result = decompose_grid_graph([(node_weights, edges, edge_weights)])
     contains_node, chains, edge_index = result[0][0], result[1][0], result[2][0]
@@ -99,13 +98,9 @@ def trw(node_weights, edges, edge_weights, y,
     energy_history = []
 
     for iteration in xrange(max_iter):
-        if verbose:
-            print 'iteration {}'.format(iteration)
-
         E = 0
         dmu = np.zeros((n_nodes, n_states))
         unaries = (node_weights - mu) * multiplier
-        unaries = node_weights * multiplier
 
         for i, chain in enumerate(chains):
             y_hat[i], energy = optimize_chain(chain,
@@ -136,19 +131,18 @@ def trw(node_weights, edges, edge_weights, y,
             lambdas[i][np.ogrid[:N], y_hat[i]] -= learning_rate
             lambdas[i] += learning_rate * lambda_sum[chains[i],:]
 
-        for p in xrange(n_nodes):
-            s = 0
-            for i in contains_node[p]:
-                pos = np.where(chains[i] == p)[0][0]
-                s += lambdas[i][pos]
-            assert np.all(abs(s) < 1e-6)
-
+        energy_history.append(E)
 
         if iteration:
             learning_rate = 1. / np.sqrt(iteration)
 
-        energy_history.append(E)
         if verbose:
-            print 'energy {}'.format(E)
+            print 'Iteration {}: energy {}'.format(iteration, E)
 
-    return lambda_sum, y_hat_kappa, energy_history
+        if iteration > 300 and np.abs(E - energy_history[-2]) < tol:
+            if verbose:
+                print 'Converged'
+            break
+
+    return lambda_sum, y_hat_kappa, energy_history, iteration
+
