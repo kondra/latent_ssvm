@@ -95,10 +95,12 @@ def trw(node_weights, edges, edge_weights, y,
 
     mu = np.zeros((n_nodes, n_states))
 
-    alpha = 0.1
+    learning_rate = 0.1
+    energy_history = []
 
     for iteration in xrange(max_iter):
-        print 'iteration {}'.format(iteration)
+        if verbose:
+            print 'iteration {}'.format(iteration)
 
         E = 0
         dmu = np.zeros((n_nodes, n_states))
@@ -117,13 +119,9 @@ def trw(node_weights, edges, edge_weights, y,
         y_hat_kappa, energy = optimize_kappa(y, mu, 1, n_nodes, n_states)
         E += energy
 
-#        print y_hat_kappa.reshape((20,20))
-#        if iteration > 2:
-#            sys.exit()
-
         dmu[np.ogrid[:dmu.shape[0]], y_hat_kappa] += 1
 
-        mu -= alpha * dmu
+        mu -= learning_rate * dmu
 
         lambda_sum = np.zeros((n_nodes, n_states), dtype=np.float64)
         for p in xrange(n_nodes):
@@ -135,8 +133,8 @@ def trw(node_weights, edges, edge_weights, y,
         for i in xrange(len(chains)):
             N = lambdas[i].shape[0]
 
-            lambdas[i][np.ogrid[:N], y_hat[i]] -= alpha
-            lambdas[i] += alpha * lambda_sum[chains[i],:]
+            lambdas[i][np.ogrid[:N], y_hat[i]] -= learning_rate
+            lambdas[i] += learning_rate * lambda_sum[chains[i],:]
 
         for p in xrange(n_nodes):
             s = 0
@@ -147,8 +145,10 @@ def trw(node_weights, edges, edge_weights, y,
 
 
         if iteration:
-            alpha = 1. / iteration
+            learning_rate = 1. / np.sqrt(iteration)
 
-        print 'energy {}'.format(E)
+        energy_history.append(E)
+        if verbose:
+            print 'energy {}'.format(E)
 
-    return lambda_sum, y_hat_kappa
+    return lambda_sum, y_hat_kappa, energy_history
