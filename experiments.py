@@ -343,7 +343,7 @@ def syntetic_over_weak(n_train_full=10, n_train=100, C=1, dataset=1,
                       alpha=alpha, inference_method='gco', n_iter=n_iter)
     trainer = OverWeak(crf_latent, n_states=10, n_features=10, n_edge_features=2,
                        C=C, max_iter=max_iter, verbose=verbose, check_every=check_every,
-                       complete_every=complete_every, alpha_kappa=alpha)
+                       complete_every=complete_every, alpha=alpha)
 
     x_train, y_train, y_train_full, x_test, y_test = \
         load_syntetic(dataset, n_train_full, n_train)
