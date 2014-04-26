@@ -296,6 +296,7 @@ def syntetic_over(n_train=100, C=1, dataset=1,
                 train_scorer=lambda w: compute_score(crf, w, x_train, y_train, invert=True, relaxed=relaxed_test),
                 test_scorer=lambda w: compute_score(crf, w, x_test, y_test, invert=True, relaxed=relaxed_test))
     stop = time()
+    time_elapsed = stop - start
 
     logger.info('testing')
 
@@ -357,6 +358,7 @@ def syntetic_over_weak(n_train_full=10, n_train=100, C=1, dataset=1,
                 train_scorer=lambda w: compute_score(crf_test, w, x_train, y_train_full, relaxed=relaxed_test),
                 test_scorer=lambda w: compute_score(crf_test, w, x_test, y_test, relaxed=relaxed_test))
     stop = time()
+    time_elapsed = stop - start
 
     logger.info('testing')
 
@@ -411,6 +413,7 @@ def msrc_over(n_train=276, C=100,
                 train_scorer=lambda w: compute_score(crf, w, x_train, y_train, invert=True, relaxed=relaxed_test),
                 test_scorer=lambda w: compute_score(crf, w, x_test, y_test, invert=True, relaxed=relaxed_test))
     stop = time()
+    time_elapsed = stop - start
 
     logger.info('testing')
 
