@@ -9,6 +9,7 @@ from sklearn.utils.extmath import safe_sparse_dot
 from chain_opt import optimize_chain_fast
 from common import latent
 from trw_utils import optimize_chain, optimize_kappa
+from graph_utils import decompose_graph, decompose_grid_graph
 
 
 class OverWeak(object):
@@ -130,7 +131,7 @@ class OverWeak(object):
                 _multiplier.append(1.0 / len(contains_node[k][p]))
             for chain in chains[k]:
                 _lambdas.append(np.zeros((len(chain), self.n_states)))
-                _y_hat.append(np.zeros(len(chain)))
+                _y_hat.append(np.zeros(len(chain), dtype=np.int32))
             lambdas.append(_lambdas)
             y_hat.append(_y_hat)
             _multiplier = np.array(_multiplier)
@@ -223,7 +224,6 @@ class OverWeak(object):
                 lambda_sum = np.zeros((n_nodes, self.n_states), dtype=np.float64)
 
                 for p in xrange(n_nodes):
-                    assert len(contains_node[k][p]) == 2
                     for i in contains_node[k][p]:
                         pos = np.where(chains[k][i] == p)[0][0]
                         lambda_sum[p, y_hat[k][i][pos]] += multiplier[k][p]
