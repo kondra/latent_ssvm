@@ -363,7 +363,7 @@ def syntetic_over_weak(n_train_full=10, n_train=100, C=1, dataset=1,
     logger.info('testing')
 
     test_score = compute_score(crf_test, trainer.w, x_test, y_test)
-    train_score = compute_score(crf_test, trainer.w, x_train, y_train)
+    train_score = compute_score(crf_test, trainer.w, x_train, y_train_full)
 
     logger.info('========================================')
     logger.info('train score: %f', train_score)
