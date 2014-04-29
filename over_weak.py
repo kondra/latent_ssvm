@@ -152,7 +152,7 @@ class OverWeak(object):
 
         learning_rate1 = 0.1
         learning_rate2 = 0.1
-        use_latent_first_iter = 50
+        use_latent_first_iter = -1
 
         for iteration in xrange(self.max_iter):
             self.logger.info('Iteration %d', iteration)
@@ -252,7 +252,7 @@ class OverWeak(object):
             self.logger.info('diff: %f', np.sum((w-self.w)**2))
             if iteration:
                 learning_rate1 = 1.0 / iteration
-                learning_rate2 = 1.0 / np.sqrt(iteration)
+                learning_rate2 = 1.0 / iteration
 
             self.timestamps.append(time.time() - self.start_time)
             self.objective_curve.append(objective)
