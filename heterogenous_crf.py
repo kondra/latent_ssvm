@@ -273,6 +273,17 @@ class HCRF(StructuredModel):
             return np.sum(y.weights * (y.full != y_hat.full))
         else:
             # should use Kappa here
+            if isinstance(y_hat.full, tuple):
+                loss = 0
+                c = np.sum(y.weights) / float(self.n_states)
+                yy = y_hat.full[0]
+                for label in xrange(0, self.n_states):
+                    if label in y.weak and not np.any(yy[:,label] > 0):
+                        loss += c
+                    elif label not in y.weak:
+                        loss += np.sum(y.weights * (yy[:,label] > 0))
+                return loss * self.alpha
+
             loss = 0
             c = np.sum(y.weights) / float(self.n_states)
             for label in xrange(0, self.n_states):
