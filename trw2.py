@@ -5,7 +5,8 @@ from trw_utils import optimize_chain, optimize_kappa
 
 
 def trw(node_weights, edges, edge_weights, y,
-        max_iter=100, verbose=0, tol=1e-3):
+        max_iter=100, verbose=0, tol=1e-3,
+        relaxed=False):
 
     result = decompose_grid_graph([(node_weights, edges, edge_weights)])
     contains_node, chains, edge_index = result[0][0], result[1][0], result[2][0]
@@ -77,5 +78,27 @@ def trw(node_weights, edges, edge_weights, y,
                 print 'Converged'
             break
 
-    return lambda_sum, y_hat_kappa, energy_history, iteration
+    if relaxed:
+        unaries = np.zeros((n_nodes, n_states), dtype=np.float64)
+        for p in xrange(n_nodes):
+            mult = 1.0 / (len(contains_node[p]) + 1)
+            for i in contains_node[p]:
+                pos = np.where(chains[i] == p)[0][0]
+                unaries[p, y_hat[i][pos]] += mult
+            unaries[p, y_hat_kappa[p]] += mult
+        return get_relaxed(unaries, edges), energy_history, iteration
+    else:
+        return lambda_sum, y_hat_kappa, energy_history, iteration
+
+
+def get_relaxed(unaries, edges):
+    n_edges = edges.shape[0]
+    n_states = unaries.shape[1]
+
+    pairwise = np.zeros((n_edges, n_states ** 2))
+    for i in xrange(n_edges):
+        (e1, e2) = edges[i]
+        pairwise[i,:] = np.kron(unaries[e1,:], unaries[e2,:])
+
+    return (unaries, pairwise)
 
