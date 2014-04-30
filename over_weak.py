@@ -216,7 +216,7 @@ class OverWeak(object):
 
             dw += w / self.C
 
-            if iteration % self.update_w_every == 0:
+            if iteration < 100 or iteration % self.update_w_every == 0:
                 w -= learning_rate1 * dw
             objective = self.C * objective + np.sum(w ** 2) / 2
 
