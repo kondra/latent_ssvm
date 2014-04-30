@@ -332,7 +332,8 @@ def syntetic_over_weak(n_train_full=10, n_train=100, C=1, dataset=1,
                        max_iter=100, verbose=1,
                        test_samples=10, check_every=10,
                        test_method='gco', test_n_iter=5, relaxed_test=False,
-                       alpha=1, n_iter=5, complete_every=10):
+                       alpha=1, n_iter=5, complete_every=10,
+                       update_w_every=5):
     # save parameters as meta
     meta_data = locals()
 
@@ -344,7 +345,7 @@ def syntetic_over_weak(n_train_full=10, n_train=100, C=1, dataset=1,
                       alpha=alpha, inference_method='gco', n_iter=n_iter)
     trainer = OverWeak(crf_latent, n_states=10, n_features=10, n_edge_features=2,
                        C=C, max_iter=max_iter, verbose=verbose, check_every=check_every,
-                       complete_every=complete_every, alpha=alpha)
+                       complete_every=complete_every, alpha=alpha, update_w_every=update_w_every)
 
     x_train, y_train, y_train_full, x_test, y_test = \
         load_syntetic(dataset, n_train_full, n_train)

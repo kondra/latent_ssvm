@@ -15,7 +15,7 @@ from graph_utils import decompose_graph, decompose_grid_graph
 class OverWeak(object):
     def __init__(self, model, n_states, n_features, n_edge_features,
                  C=1, verbose=0, max_iter=200, check_every=1,
-                 complete_every=1, alpha=1):
+                 complete_every=1, alpha=1, update_w_every=50):
         self.model = model
         self.n_states = n_states
         self.n_features = n_features
@@ -30,6 +30,7 @@ class OverWeak(object):
         self.complete_every = complete_every
         self.alpha = alpha
         self.n_jobs = 4
+        self.update_w_every = update_w_every
 
     def _get_edges(self, x):
         return x[1]
@@ -215,7 +216,8 @@ class OverWeak(object):
 
             dw += w / self.C
 
-            w -= learning_rate1 * dw
+            if iteration % self.update_w_every == 0:
+                w -= learning_rate1 * dw
             objective = self.C * objective + np.sum(w ** 2) / 2
 
             self.logger.info('Update lambda')
