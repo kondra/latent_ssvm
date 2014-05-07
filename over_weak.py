@@ -166,6 +166,8 @@ class OverWeak(object):
                 x, y = X[k], Y[k]
                 n_nodes = x[0].shape[0]
 
+                self.logger.info('object %d', k)
+
                 if y.full_labeled:
                     unaries = self._loss_augment_unaries(self._get_unary_potentials(x, w),
                                                          y.full, y.weights)
@@ -223,6 +225,7 @@ class OverWeak(object):
             self.logger.info('Update lambda')
 
             for k in xrange(len(X)):
+                n_nodes = X[k][0].shape[0]
                 lambda_sum = np.zeros((n_nodes, self.n_states), dtype=np.float64)
 
                 for p in xrange(n_nodes):
