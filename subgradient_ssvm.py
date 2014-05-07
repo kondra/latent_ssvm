@@ -141,8 +141,7 @@ class SubgradientSSVM(BaseSSVM):
             effective_lr = (self.learning_rate_
                             / (self.t + self.decay_t0)
                             ** self.decay_exponent)
-        #w += effective_lr * self.grad_old
-        w += self.alpha * self.grad_old
+        w += effective_lr * self.grad_old
 
         if self.averaging == 'linear':
             rho = 2. / (self.t + 2.)
@@ -244,8 +243,8 @@ class SubgradientSSVM(BaseSSVM):
         except KeyboardInterrupt:
             pass
 
-        if self.verbose:
-            print("Computing final objective")
+#        if self.verbose:
+#            print("Computing final objective")
 
         self.w_history = np.vstack(self.w_history)
 
