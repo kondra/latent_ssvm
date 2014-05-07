@@ -13,7 +13,7 @@ from subgrad import Subgrad
 from heterogenous_crf import HCRF
 
 from results import ExperimentResult, experiment
-from utils import load_syntetic, load_msrc
+from utils import load_syntetic, load_msrc, load_binary_syntetic
 
 @experiment
 def syntetic_weak(n_full=10, n_train=200, C=0.1, dataset=1, latent_iter=15,
@@ -444,6 +444,65 @@ def msrc_over(n_train=276, C=100,
 
     return ExperimentResult(exp_data, meta_data)
 
+@experiment
+def msrc_over_weak(n_train_full=80, n_train=276, 
+                   C=100, alpha=0.1,
+                   test_method='gco', test_n_iter=5, n_iter=5,
+                   max_iter=2000, verbose=1,
+                   check_every=50, complete_every=100, update_w_every=50,
+                   relaxed_test=False):
+    # save parameters as meta
+    meta_data = locals()
+
+    logger = logging.getLogger(__name__)
+
+    crf_test = HCRF(n_states=24, n_features=2028, n_edge_features=4, alpha=alpha,
+                    inference_method=test_method, n_iter=test_n_iter)
+    crf_latent = HCRF(n_states=24, n_features=2028, n_edge_features=4, alpha=alpha,
+                      inference_method='gco', n_iter=n_iter)
+    trainer = OverWeak(crf_latent, n_states=24, n_features=2028, n_edge_features=4,
+                       C=C, alpha=alpha,
+                       max_iter=max_iter, verbose=verbose,
+                       check_every=check_every, complete_every=complete_every, update_w_every=update_w_every)
+
+    x_train, y_train, y_train_full, x_test, y_test = load_msrc(n_train_full, n_train)
+
+    logger.info('start training')
+
+    start = time()
+    trainer.fit(x_train, y_train,
+                train_scorer=lambda w: compute_score(crf_test, w, x_train, y_train_full, relaxed=relaxed_test),
+                test_scorer=lambda w: compute_score(crf_test, w, x_test, y_test, relaxed=relaxed_test))
+    stop = time()
+    time_elapsed = stop - start
+
+    logger.info('testing')
+
+    test_score = compute_score(crf_test, trainer.w, x_test, y_test)
+    train_score = compute_score(crf_test, trainer.w, x_train, y_train_full)
+
+    logger.info('========================================')
+    logger.info('train score: %f', train_score)
+    logger.info('test score: %f', test_score)
+
+    exp_data = {}
+
+    exp_data['timestamps'] = trainer.timestamps
+    exp_data['objective'] = trainer.objective_curve
+    exp_data['w'] = trainer.w
+    exp_data['train_scores'] = trainer.train_score
+    exp_data['test_scores'] = trainer.test_score
+    exp_data['w_history'] = trainer.w_history
+
+    meta_data['dataset_name'] = 'msrc'
+    meta_data['annotation_type'] = 'full+weak'
+    meta_data['label_type'] = 'image-level labelling'
+    meta_data['trainer'] = 'komodakis+latent+kappa'
+    meta_data['train_score'] = train_score
+    meta_data['test_score'] = test_score
+    meta_data['time_elapsed'] = time_elapsed
+
+    return ExperimentResult(exp_data, meta_data)
 
 #@experiment
 #def syntetic_subgrad(n_train=100, mu=1, dataset=1,
@@ -545,3 +604,166 @@ def msrc_over(n_train=276, C=100,
 #    meta_data['test_score'] = test_score
 #
 #    return ExperimentResult(exp_data, meta_data)
+
+#binary exp
+
+@experiment
+def binary_full_fw(n_train=100, C=1, dataset=1,
+                   max_iter=1000, n_inference_iter=5,
+                   check_dual_every=10, test_samples=100,
+                   inference_method='gco'):
+    # save parameters as meta
+    meta_data = locals()
+
+    logger = logging.getLogger(__name__)
+
+    crf = HCRF(n_states=2, n_features=10, n_edge_features=1, alpha=1,
+               inference_method=inference_method, n_iter=n_inference_iter)
+    clf = FrankWolfeSSVM(crf, verbose=2, n_jobs=1, check_dual_every=check_dual_every,
+                         max_iter=max_iter, C=C)
+
+    x_train, y_train, x_test, y_test = \
+        load_binary_syntetic(dataset, n_train)
+
+    logger.info('start training')
+
+    start = time()
+    clf.fit(x_train, y_train, Xtest=x_test[:test_samples], Ytest=y_test[:test_samples])
+    stop = time()
+
+    train_score = clf.score(x_train, y_train)
+    test_score = clf.score(x_test, y_test)
+    time_elapsed = stop - start
+
+    logger.info('============================================================')
+    logger.info('Score on train set: %f', train_score)
+    logger.info('Score on test set: %f', test_score)
+    logger.info('Elapsed time: %f s', time_elapsed)
+
+    exp_data = {}
+
+    exp_data['timestamps'] = clf.timestamps_
+    exp_data['primal_objective'] = clf.primal_objective_curve_
+    exp_data['objective'] = clf.objective_curve_
+    exp_data['w_history'] = clf.w_history
+    exp_data['test_scores'] = clf.test_scores
+    exp_data['train_scores'] = clf.train_scores
+    exp_data['w'] = clf.w
+
+    meta_data['dataset_name'] = 'syntetic binary'
+    meta_data['annotation_type'] = 'full'
+    meta_data['label_type'] = 'full'
+    meta_data['trainer'] = 'frank-wolfe'
+    meta_data['train_score'] = train_score
+    meta_data['test_score'] = test_score
+    meta_data['time_elapsed'] = time_elapsed
+
+    return ExperimentResult(exp_data, meta_data)
+
+
+@experiment
+def binary_over(n_train=100, C=1, dataset=1,
+                max_iter=100, verbose=1,
+                test_samples=100, check_every=10,
+                test_method='gco', test_n_iter=5, relaxed_test=False):
+    # save parameters as meta
+    meta_data = locals()
+
+    logger = logging.getLogger(__name__)
+
+    crf = HCRF(n_states=2, n_features=10, n_edge_features=1, alpha=1,
+               inference_method=test_method, n_iter=test_n_iter)
+    trainer = Over(n_states=2, n_features=10, n_edge_features=1,
+                   C=C, max_iter=max_iter, verbose=verbose, check_every=check_every)
+
+    x_train, y_train, x_test, y_test = \
+        load_binary_syntetic(dataset, n_train)
+    x_test = x_test[:test_samples]
+    y_test = y_test[:test_samples]
+
+    logger.info('start training')
+
+    start = time()
+    trainer.fit(x_train, y_train,
+                train_scorer=lambda w: compute_score(crf, w, x_train, y_train, invert=True, relaxed=relaxed_test),
+                test_scorer=lambda w: compute_score(crf, w, x_test, y_test, invert=True, relaxed=relaxed_test))
+    stop = time()
+    time_elapsed = stop - start
+
+    logger.info('testing')
+
+    test_score = compute_score(crf, trainer.w, x_test, y_test, invert=True, relaxed=relaxed_test)
+    train_score = compute_score(crf, trainer.w, x_train, y_train, invert=True, relaxed=relaxed_test)
+
+    logger.info('========================================')
+    logger.info('train score: %f', train_score)
+    logger.info('test score: %f', test_score)
+
+    exp_data = {}
+
+    exp_data['timestamps'] = trainer.timestamps
+    exp_data['objective'] = trainer.objective_curve
+    exp_data['w'] = trainer.w
+    exp_data['train_scores'] = trainer.train_score
+    exp_data['test_scores'] = trainer.test_score
+    exp_data['w_history'] = trainer.w_history
+
+    meta_data['dataset_name'] = 'syntetic binary'
+    meta_data['annotation_type'] = 'full'
+    meta_data['label_type'] = 'full'
+    meta_data['trainer'] = 'komodakis'
+    meta_data['train_score'] = train_score
+    meta_data['test_score'] = test_score
+    meta_data['time_elapsed'] = time_elapsed
+
+    return ExperimentResult(exp_data, meta_data)
+
+
+@experiment
+def binary_cp(n_train=100, C=1, dataset=1,
+              max_iter=1000, n_inference_iter=5,
+              check_dual_every=10, test_samples=100,
+              inference_method='gco'):
+    # save parameters as meta
+    meta_data = locals()
+
+    logger = logging.getLogger(__name__)
+
+    crf = HCRF(n_states=2, n_features=10, n_edge_features=1, alpha=1,
+               inference_method=inference_method, n_iter=n_inference_iter)
+    clf = OneSlackSSVM(crf, verbose=2, n_jobs=4,
+                            max_iter=max_iter, C=C)
+
+    x_train, y_train, x_test, y_test = load_binary_syntetic(dataset, n_train)
+
+    logger.info('start training')
+
+    start = time()
+    clf.fit(x_train, y_train,
+            train_scorer=lambda w: compute_score(crf, w, x_train, y_train, invert=False),
+            test_scorer=lambda w: compute_score(crf, w, x_test, y_test, invert=False))
+    stop = time()
+
+    train_score = clf.score(x_train, y_train)
+    test_score = clf.score(x_test, y_test)
+    time_elapsed = stop - start
+
+    logger.info('============================================================')
+    logger.info('Score on train set: %f', train_score)
+    logger.info('Score on test set: %f', test_score)
+    logger.info('Elapsed time: %f s', time_elapsed)
+
+    exp_data = {}
+
+    exp_data['train_scores'] = clf.train_scores
+    exp_data['test_scores'] = clf.test_scores
+
+    meta_data['dataset_name'] = 'syntetic binary'
+    meta_data['annotation_type'] = 'full'
+    meta_data['label_type'] = 'full'
+    meta_data['trainer'] = 'cutting plane'
+    meta_data['train_score'] = train_score
+    meta_data['test_score'] = test_score
+    meta_data['time_elapsed'] = time_elapsed
+
+    return ExperimentResult(exp_data, meta_data)
