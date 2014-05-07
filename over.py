@@ -137,10 +137,11 @@ class Over(object):
         lambdas = []
         multiplier = []
         for k in xrange(len(X)):
+            n_nodes = X[k][0].shape[0]
             _lambdas = []
             _y_hat = []
             _multiplier = []
-            for p in xrange(X[k][0].shape[0]):
+            for p in xrange(n_nodes):
                 _multiplier.append(1.0 / len(contains_node[k][p]))
             for chain in chains[k]:
                 _lambdas.append(np.zeros((len(chain), self.n_states)))
