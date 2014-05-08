@@ -82,6 +82,8 @@ class Over(object):
         features = self._get_features(x)[chain,:]
         n_nodes = features.shape[0]
 
+        features *= multiplier[chain,:]
+
         e_ind = []
         edges = []
         for i in xrange(chain.shape[0] - 1):
@@ -93,7 +95,6 @@ class Over(object):
 
         unary_marginals = np.zeros((n_nodes, self.n_states), dtype=np.float64)
         unary_marginals[np.ogrid[:n_nodes], y] = 1
-        unary_marginals *= multiplier[chain,:]
         unaries_acc = safe_sparse_dot(unary_marginals.T, features,
                                       dense_output=True)
 
@@ -178,6 +179,7 @@ class Over(object):
 
                 unaries = self._loss_augment_unaries(self._get_unary_potentials(x, w), y.full, y.weights)
                 unaries *= multiplier[k]
+
                 pairwise = self._get_pairwise_potentials(x, w)
 
                 objective += np.dot(w, self._joint_features_full(x, y.full))
@@ -223,7 +225,7 @@ class Over(object):
 
             self.logger.info('diff: %f', np.sum((w-self.w)**2))
             if iteration:
-                learning_rate = 1.0 / np.sqrt(iteration)
+                learning_rate = 1.0 / iteration
 
             self.timestamps.append(time.time() - self.start_time)
             self.objective_curve.append(objective)
