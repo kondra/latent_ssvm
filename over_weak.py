@@ -67,6 +67,8 @@ class OverWeak(object):
         features = self._get_features(x)[chain,:]
         n_nodes = features.shape[0]
 
+        features *= multiplier[chain,:]
+
         e_ind = []
         edges = []
         for i in xrange(chain.shape[0] - 1):
@@ -78,7 +80,6 @@ class OverWeak(object):
 
         unary_marginals = np.zeros((n_nodes, self.n_states), dtype=np.float64)
         unary_marginals[np.ogrid[:n_nodes], y] = 1
-        unary_marginals *= multiplier[chain,:]
         unaries_acc = safe_sparse_dot(unary_marginals.T, features,
                                       dense_output=True)
 
