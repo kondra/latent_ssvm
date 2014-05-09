@@ -1,10 +1,14 @@
 import numpy as np
 
 from graph_utils import decompose_graph, decompose_grid_graph
-from trw_utils import optimize_chain, optimize_kappa
+from trw_utils import *
+
 
 def trw(node_weights, edges, edge_weights,
-        max_iter=100, verbose=0, tol=1e-3):
+        max_iter=100, verbose=0, tol=1e-3,
+        strategy='sqrt'):
+
+    assert strategy in ['best-dual', 'best-primal', 'sqrt', 'linear']
 
     result = decompose_grid_graph([(node_weights, edges, edge_weights)])
     contains_node, chains, edge_index = result[0][0], result[1][0], result[2][0]
@@ -25,19 +29,20 @@ def trw(node_weights, edges, edge_weights,
     multiplier.shape = (n_nodes, 1)
 
     learning_rate = 0.1
-    energy_history = []
+    dual_history = []
+    primal_history = []
 
-    adaptive_rate = False
+    gamma = 0.1
 
-#    alpha = 1.
-#    gamma = 1.
-#    delta = 1.
-#    rho0 = 1.5
-#    rho1 = 0.1
-#    eps = 0.001
-#    best_dual = -np.inf
+    delta = 1.
+    r0 = 1.5
+    r1 = 0.5
+    
+    best_dual = np.inf
+    best_primal = -np.inf
+
     for iteration in xrange(max_iter):
-        energy = 0.0
+        dual = 0.0
         unaries = node_weights * multiplier
 
         for i, chain in enumerate(chains):
@@ -46,48 +51,58 @@ def trw(node_weights, edges, edge_weights,
                                          edge_weights,
                                          edge_index)
 
-            energy += e
+            dual += e
 
         lambda_sum = np.zeros((n_nodes, n_states), dtype=np.float64)
         for p in xrange(n_nodes):
-            assert len(contains_node[p]) == 2
             for i in contains_node[p]:
                 pos = np.where(chains[i] == p)[0][0]
                 lambda_sum[p, y_hat[i][pos]] += multiplier[p]
 
+        p_norm = 0.0
         for i in xrange(len(chains)):
             N = lambdas[i].shape[0]
 
-            lambdas[i][np.ogrid[:N], y_hat[i]] -= learning_rate
-            lambdas[i] += learning_rate * lambda_sum[chains[i],:]
+            dlambda = lambda_sum[chains[i],:].copy()
+            dlambda[np.ogrid[:N], y_hat[i]] -= 1
 
-        if iteration:
-            learning_rate = 1. / np.sqrt(iteration)
+            p_norm += np.sum(dlambda ** 2)
 
-        energy_history.append(energy)
+            lambdas[i] += learning_rate * dlambda
 
-        if verbose:
-            print 'iteration {}: energy = {}'.format(iteration, energy)
+        primal = compute_energy(get_labelling(lambda_sum), unaries, edge_weights, edges)
+        primal_history.append(primal)
+        dual_history.append(dual)
 
-        if iteration and np.abs(energy - energy_history[-2]) < tol:
+        if iteration and (np.abs(dual - dual_history[-2]) < tol or p_norm < tol):
             if verbose:
                 print 'Converged'
             break
 
-#        if energy > best_dual:
-#            best_dual = energy
-#        if iteration:
-#            if smart_step:
-#                grad_norm = np.sum((mean_x * 2) ** 2)
-#                if energy > prev_energy:
-#                    delta *= rho0
-#                else:
-#                    delta = max(rho1 * delta, eps)
-#                alpha = (best_dual + delta) - energy
-#                alpha /= grad_norm
-#                alpha *= gamma
-#            else:
-#                alpha = 2 / np.sqrt(iteration)
+        if iteration:
+            if strategy == 'sqrt':
+                learning_rate = 1. / np.sqrt(iteration)
+            elif strategy == 'linear':
+                learning_rate = 1. / iteration
+            elif strategy == 'best-dual':
+                best_dual = min(best_dual, dual)
+                approx = best_dual - delta
+                if dual < dual_history[-2]:
+                    delta *= r0
+                else:
+                    delta = max(r1 * delta, 1e-4)
+                learning_rate = gamma * (dual - approx) / p_norm
+            elif strategy == 'best-primal':
+                best_primal = max(best_primal, primal)
+                learning_rate = gamma * (dual - best_primal) / p_norm
 
-    return lambda_sum, energy_history
+
+        if verbose:
+            print 'iteration {}: dual energy = {}'.format(iteration, dual)
+
+    info = {}
+    info['dual_energy'] = dual_history
+    info['primal_energy'] = primal_history
+
+    return lambda_sum, info
 
