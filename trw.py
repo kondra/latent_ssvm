@@ -6,7 +6,8 @@ from trw_utils import *
 
 def trw(node_weights, edges, edge_weights,
         max_iter=100, verbose=0, tol=1e-3,
-        strategy='sqrt'):
+        strategy='sqrt',
+        r0=1.5, r1=0.5, gamma=0.1):
 
     assert strategy in ['best-dual', 'best-primal', 'sqrt', 'linear']
 
@@ -28,16 +29,11 @@ def trw(node_weights, edges, edge_weights,
     multiplier = np.array(multiplier)
     multiplier.shape = (n_nodes, 1)
 
+    delta = 1.
     learning_rate = 0.1
     dual_history = []
     primal_history = []
 
-    gamma = 0.1
-
-    delta = 1.
-    r0 = 1.5
-    r1 = 0.5
-    
     best_dual = np.inf
     best_primal = -np.inf
 
@@ -87,7 +83,7 @@ def trw(node_weights, edges, edge_weights,
             elif strategy == 'best-dual':
                 best_dual = min(best_dual, dual)
                 approx = best_dual - delta
-                if dual < dual_history[-2]:
+                if dual <= dual_history[-2]:
                     delta *= r0
                 else:
                     delta = max(r1 * delta, 1e-4)
