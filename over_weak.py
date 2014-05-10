@@ -129,7 +129,8 @@ class OverWeak(object):
     
         return h
 
-    def fit(self, X, Y, train_scorer, test_scorer, decompose='general'):
+    def fit(self, X, Y, train_scorer, test_scorer, decompose='general',
+            use_latent_first_iter=500, undergenerating_weak=True):
         self.logger.info('Initialization')
 
         if decompose == 'general':
@@ -174,8 +175,6 @@ class OverWeak(object):
 
         learning_rate1 = 0.1
         learning_rate2 = 0.1
-        use_latent_first_iter = 500
-        undergenerating_weak = True
 
         for iteration in xrange(self.max_iter):
             self.logger.info('Iteration %d', iteration)
@@ -188,7 +187,7 @@ class OverWeak(object):
                 x, y = X[k], Y[k]
                 n_nodes = x[0].shape[0]
 
-                self.logger.info('object %d', k)
+#                self.logger.info('object %d', k)
 
                 if y.full_labeled:
                     unaries = self._loss_augment_unaries(self._get_unary_potentials(x, w),
@@ -211,12 +210,12 @@ class OverWeak(object):
                         objective += energy
                 elif iteration > use_latent_first_iter:
                     if undergenerating_weak:
-                        y_hat, energy = self.loss_augmented_inference(x, y, w)
+                        y_hat_, energy = self.loss_augmented_inference(x, y, w)
                         jf_gt = self._joint_features_full(x, y.full)
                         objective -= np.dot(w, jf_gt)
                         objective += energy
                         dw -= jf_gt
-                        dw += self._joint_features_full(x, y_hat)
+                        dw += self._joint_features_full(x, y_hat_)
                     else:
                         dmu = np.zeros((n_nodes, self.n_states))
 
@@ -257,6 +256,7 @@ class OverWeak(object):
             for k in xrange(len(X)):
                 if undergenerating_weak and not Y[k].full_labeled:
                     continue
+
                 n_nodes = X[k][0].shape[0]
                 lambda_sum = np.zeros((n_nodes, self.n_states), dtype=np.float64)
 
