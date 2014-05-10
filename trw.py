@@ -218,7 +218,6 @@ def f(x, node_weights, multiplier, chains, edge_weights, edge_index, sign, y_hat
             dlambda[p][y_hat[i][pos]] += sign[i]
 
     history.append(dual)
-    print dual
 
     return dual, dlambda.reshape(4000)
 
