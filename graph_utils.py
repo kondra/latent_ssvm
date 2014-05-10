@@ -78,10 +78,11 @@ def decompose_graph(X):
     return contains, chains, edge_index
 
 
-def decompose_grid_graph(X):
+def decompose_grid_graph(X, get_sign=False):
     contains_node = []
     chains = []
     edge_index = []
+    sign = []
 
     n_states = 10
     n_nodes = 400
@@ -94,24 +95,34 @@ def decompose_grid_graph(X):
         for i, edge in enumerate(x[1]):
             _edge_index[(edge[0], edge[1])] = i
 
+        _sign = []
         _chains = []
         _contains = [[] for i in xrange(n_nodes)]
+
+        #vertical
         for i in xrange(0, n_nodes, width):
+            _sign.append(1)
             _chains.append(np.arange(i, i + width))
             assert _chains[-1].shape[0] == width
             tree_number = len(_chains) - 1
             for node in _chains[-1]:
                 _contains[node].append(tree_number)
 
+        #horizontal
         for i in xrange(0, width):
+            _sign.append(-1)
             _chains.append(np.arange(i, n_nodes, width))
             assert _chains[-1].shape[0] == height
             tree_number = len(_chains) - 1
             for node in _chains[-1]:
                 _contains[node].append(tree_number)
 
+        sign.append(_sign)
         contains_node.append(_contains)
         chains.append(_chains)
         edge_index.append(_edge_index)
 
-    return contains_node, chains, edge_index
+    if get_sign:
+        return contains_node, chains, edge_index, sign
+    else:
+        return contains_node, chains, edge_index
