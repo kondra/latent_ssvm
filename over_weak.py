@@ -10,6 +10,7 @@ from chain_opt import optimize_chain_fast
 from common import latent
 from trw_utils import optimize_chain, optimize_kappa
 from graph_utils import decompose_graph, decompose_grid_graph
+from heterogenous_crf import inference_gco
 
 
 class OverWeak(object):
@@ -109,6 +110,25 @@ class OverWeak(object):
 
         return np.hstack([unaries_acc.ravel(), pw.ravel()])
 
+    def loss_augmented_inference(self, x, y, w):
+        unary_potentials = self._get_unary_potentials(x, w)
+        pairwise_potentials = self._get_pairwise_potentials(x, w)
+        edges = self._get_edges(x)
+
+        label_costs = np.zeros(self.n_states)
+        c = np.sum(y.weights) / float(self.n_states)
+        for label in y.weak:
+            label_costs[label] = c
+
+        for label in xrange(0, self.n_states):
+            if label not in y.weak:
+                unary_potentials[:, label] += y.weights
+    
+        h = inference_gco(unary_potentials, pairwise_potentials, edges,
+                          label_costs, n_iter=5, return_energy=True)
+    
+        return h
+
     def fit(self, X, Y, train_scorer, test_scorer, decompose='general'):
         self.logger.info('Initialization')
 
@@ -154,7 +174,8 @@ class OverWeak(object):
 
         learning_rate1 = 0.1
         learning_rate2 = 0.1
-        use_latent_first_iter = -1
+        use_latent_first_iter = 500
+        undergenerating_weak = True
 
         for iteration in xrange(self.max_iter):
             self.logger.info('Iteration %d', iteration)
@@ -189,33 +210,41 @@ class OverWeak(object):
 
                         objective += energy
                 elif iteration > use_latent_first_iter:
-                    dmu = np.zeros((n_nodes, self.n_states))
+                    if undergenerating_weak:
+                        y_hat, energy = self.loss_augmented_inference(x, y, w)
+                        jf_gt = self._joint_features_full(x, y.full)
+                        objective -= np.dot(w, jf_gt)
+                        objective += energy
+                        dw -= jf_gt
+                        dw += self._joint_features_full(x, y_hat)
+                    else:
+                        dmu = np.zeros((n_nodes, self.n_states))
 
-                    unaries = (self._get_unary_potentials(x, w) - mu[k]) * multiplier[k]
-                    pairwise = self._get_pairwise_potentials(x, w)
+                        unaries = (self._get_unary_potentials(x, w) - mu[k]) * multiplier[k]
+                        pairwise = self._get_pairwise_potentials(x, w)
 
-                    jf = self._joint_features_full(x, y.full)
-                    objective -= np.dot(w, jf)
-                    dw -= jf
+                        jf = self._joint_features_full(x, y.full)
+                        objective -= np.dot(w, jf)
+                        dw -= jf
 
-                    for i in xrange(len(chains[k])):
-                        y_hat[k][i], energy = optimize_chain(chains[k][i],
-                                                             lambdas[k][i] + unaries[chains[k][i],:],
-                                                             pairwise,
-                                                             edge_index[k])
+                        for i in xrange(len(chains[k])):
+                            y_hat[k][i], energy = optimize_chain(chains[k][i],
+                                                                 lambdas[k][i] + unaries[chains[k][i],:],
+                                                                 pairwise,
+                                                                 edge_index[k])
 
-                        dw += self._joint_features(chains[k][i], x, y_hat[k][i], edge_index[k], multiplier[k])
+                            dw += self._joint_features(chains[k][i], x, y_hat[k][i], edge_index[k], multiplier[k])
+
+                            objective += energy
+
+                            dmu[chains[k][i], y_hat[k][i]] -= multiplier[k][chains[k][i]].flatten()
+
+                        y_hat_kappa, energy = optimize_kappa(y, mu[k], self.alpha, n_nodes, self.n_states)
 
                         objective += energy
+                        dmu[np.ogrid[:dmu.shape[0]], y_hat_kappa] += 1
 
-                        dmu[chains[k][i], y_hat[k][i]] -= multiplier[k][chains[k][i]].flatten()
-
-                    y_hat_kappa, energy = optimize_kappa(y, mu[k], self.alpha, n_nodes, self.n_states)
-
-                    objective += energy
-                    dmu[np.ogrid[:dmu.shape[0]], y_hat_kappa] += 1
-
-                    mu[k] -= learning_rate2 * dmu
+                        mu[k] -= learning_rate2 * dmu
 
             dw += w / self.C
 
@@ -226,6 +255,8 @@ class OverWeak(object):
             self.logger.info('Update lambda')
 
             for k in xrange(len(X)):
+                if undergenerating_weak and not Y[k].full_labeled:
+                    continue
                 n_nodes = X[k][0].shape[0]
                 lambda_sum = np.zeros((n_nodes, self.n_states), dtype=np.float64)
 
