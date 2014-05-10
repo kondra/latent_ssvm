@@ -334,7 +334,8 @@ def syntetic_over_weak(n_train_full=10, n_train=100, C=1, dataset=1,
                        test_samples=10, check_every=10,
                        test_method='gco', test_n_iter=5, relaxed_test=False,
                        alpha=1, n_iter=5, complete_every=10,
-                       update_w_every=5):
+                       update_w_every=5,
+                       use_latent_first_iter=500, undergenerating_weak=True):
     # save parameters as meta
     meta_data = locals()
 
@@ -359,7 +360,8 @@ def syntetic_over_weak(n_train_full=10, n_train=100, C=1, dataset=1,
     trainer.fit(x_train, y_train,
                 train_scorer=lambda w: compute_score(crf_test, w, x_train, y_train_full, relaxed=relaxed_test),
                 test_scorer=lambda w: compute_score(crf_test, w, x_test, y_test, relaxed=relaxed_test),
-                decompose='grid')
+                decompose='grid',
+                use_latent_first_iter=use_latent_first_iter, undergenerating_weak=undergenerating_weak)
     stop = time()
     time_elapsed = stop - start
 
