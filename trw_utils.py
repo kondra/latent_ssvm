@@ -68,3 +68,10 @@ def get_labelling(relaxed_y):
         y[i] = np.where(relaxed_y[i,:])[0][0]
     return y.astype(np.int32)
 
+
+def compute_energy(y, unaries, pairwise, edges):
+    energy = 0.0
+    for i, (u, v) in enumerate(edges):
+        energy += pairwise[i, y[u], y[v]]
+    energy += np.sum(unaries[np.ogrid[:y.shape[0]],y])
+    return energy
