@@ -342,6 +342,8 @@ class HCRF(StructuredModel):
 #            if count == 0 and np.abs(energy + h[1]) > 1e-4:
 #                print 'FULL: energy does not match: %f, %f, difference=%f' % (energy, -h[1],
 #                                                                              energy + h[1])
+            if return_energy:
+                return y_ret, h[1]
 
             return y_ret
         else:
