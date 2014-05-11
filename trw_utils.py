@@ -27,15 +27,16 @@ def optimize_chain(chain, unary_cost, pairwise_cost, edge_index):
     return x, np.max(p[:,n_nodes - 1])
 
 
-def optimize_kappa(y, mu, alpha, n_nodes, n_states):
-    unaries = mu.copy()
+def optimize_kappa(y, unaries, alpha, n_nodes, n_states, augment=True):
+    unaries = unaries.copy()
 
     c = np.sum(y.weights) / float(n_states)
     c *= alpha
 
-    for label in xrange(n_states):
-        if label not in y.weak:
-            unaries[:,label] += y.weights * alpha
+    if augment:
+        for label in xrange(n_states):
+            if label not in y.weak:
+                unaries[:,label] += y.weights * alpha
 
     max_energy = -np.Inf
     best_y = None
@@ -52,8 +53,7 @@ def optimize_kappa(y, mu, alpha, n_nodes, n_states):
             energy = np.sum(np.max(unaries[:,labels], axis=1))
             energy2 = np.sum(t_unaries[np.ogrid[:unaries.shape[0]],y_hat])
             present_labels = set(np.unique(y_hat))
-            if len(present_labels.intersection(gt_labels)):
-                energy -= c
+            energy -= c * len(present_labels.intersection(gt_labels))
             if energy > max_energy:
                 max_energy = energy
                 best_y = y_hat
