@@ -159,7 +159,7 @@ class OverLbfgs(object):
         self.test_scorer = test_scorer
 
         #x0 = np.zeros(self.size_w + 4000 * len(X))
-        x0 = 10 * np.ones(self.size_w)
+        x0 = np.zeros(self.size_w)
 
 #        l = 0.1
 #        for iteration in xrange(100):
