@@ -113,7 +113,7 @@ class OverLbfgs(object):
         return inference_gco(unary_potentials, pairwise_potentials, edges,
                           n_iter=5, return_energy=True)
 
-    def fit(self, X, Y, train_scorer, test_scorer, decompose='grid'):
+    def fit(self, X, Y, train_scorer, test_scorer, decompose='grid', w0=None):
         print('over unconstr begin')
 
         if decompose == 'general':
@@ -160,6 +160,8 @@ class OverLbfgs(object):
 
         #x0 = np.zeros(self.size_w + 4000 * len(X))
         x0 = np.zeros(self.size_w)
+        if w0 is not None:
+            x0 = w0
 
 #        l = 0.1
 #        for iteration in xrange(100):
