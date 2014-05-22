@@ -3,6 +3,7 @@ import numpy as np
 from graph_utils import decompose_graph, decompose_grid_graph
 from trw_utils import optimize_chain, optimize_kappa
 
+# three dual variables; only projection subgradient; no nested optimization problems
 
 def trw(node_weights, edges, edge_weights, y,
         max_iter=100, verbose=0, tol=1e-3):
