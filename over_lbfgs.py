@@ -179,6 +179,51 @@ class OverLbfgs(object):
         return w, history
 
 
+def f2(xx, model, X, Y, history):
+    w = xx.copy()
+
+    dw = np.zeros(w.shape)
+    objective = 0
+
+    o2 = 0
+
+    for k in xrange(len(X)):
+        x, y = X[k], Y[k]
+        y_hat, energy = model.loss_augmented_inference(x, y, w)
+
+        objective -= energy
+        objective -= np.dot(w, model._joint_features_full(x, y.full))
+
+        o2 += np.dot(w, model._joint_features_full(x, y_hat)) \
+            -np.dot(w, model._joint_features_full(x, y.full))
+
+        dw += model._joint_features_full(x, y_hat)
+        dw -= model._joint_features_full(x, y.full)
+
+    print 'mean diff = {}'.format(o2 / len(X))
+
+    dw += w / model.C
+    objective = model.C * objective + np.sum(w ** 2) / 2
+
+    history['iteration'] += 1
+    history['objective'].append(objective)
+    history['w'].append(w)
+
+    print history['iteration']
+    print objective
+
+    if history['iteration'] % 10 == 0:
+        train_score = model.train_scorer(w)
+        history['train_scores'].append(train_score)
+        print 'Train SCORE: {}'.format(train_score)
+
+        test_score = model.test_scorer(w)
+        history['test_scores'].append(test_score)
+        print 'Test SCORE: {}'.format(test_score)
+
+    return objective, dw
+
+
 def f(xx, model, X, Y, multiplier, chains, sign, edge_index, y_hat, contains_node, history):
     w = xx[:model.size_w].copy()
     sz = xx.shape
@@ -248,48 +293,3 @@ def f(xx, model, X, Y, multiplier, chains, sign, edge_index, y_hat, contains_nod
     print objective
 
     return objective, grad
-
-
-def f2(xx, model, X, Y, history):
-    w = xx.copy()
-
-    dw = np.zeros(w.shape)
-    objective = 0
-
-    o2 = 0
-
-    for k in xrange(len(X)):
-        x, y = X[k], Y[k]
-        y_hat, energy = model.loss_augmented_inference(x, y, w)
-
-        objective -= energy
-        objective -= np.dot(w, model._joint_features_full(x, y.full))
-
-        o2 += np.dot(w, model._joint_features_full(x, y_hat)) \
-            -np.dot(w, model._joint_features_full(x, y.full))
-
-        dw += model._joint_features_full(x, y_hat)
-        dw -= model._joint_features_full(x, y.full)
-
-    print 'mean diff = {}'.format(o2 / len(X))
-
-    dw += w / model.C
-    objective = model.C * objective + np.sum(w ** 2) / 2
-
-    history['iteration'] += 1
-    history['objective'].append(objective)
-    history['w'].append(w)
-
-    print history['iteration']
-    print objective
-
-    if history['iteration'] % 10 == 0:
-        train_score = model.train_scorer(w)
-        history['train_scores'].append(train_score)
-        print 'Train SCORE: {}'.format(train_score)
-
-        test_score = model.test_scorer(w)
-        history['test_scores'].append(test_score)
-        print 'Test SCORE: {}'.format(test_score)
-
-    return objective, dw
