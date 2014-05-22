@@ -210,12 +210,35 @@ class OverWeak(object):
                         objective += energy
                 elif iteration > use_latent_first_iter:
                     if undergenerating_weak:
-                        y_hat_, energy = self.loss_augmented_inference(x, y, w)
-                        jf_gt = self._joint_features_full(x, y.full)
-                        objective -= np.dot(w, jf_gt)
+# Use gco for full K oracle
+#                        y_hat_, energy = self.loss_augmented_inference(x, y, w)
+#                        jf_gt = self._joint_features_full(x, y.full)
+#                        objective -= np.dot(w, jf_gt)
+#                        objective += energy
+#                        dw -= jf_gt
+#                        dw += self._joint_features_full(x, y_hat_)
+
+# use gco for first summand in DD
+                        dmu = np.zeros((n_nodes, self.n_states))
+
+                        unaries = self._get_unary_potentials(x, w) - mu[k]
+                        pairwise = self._get_pairwise_potentials(x, w)
+
+                        y_hat_gco, energy = inference_gco(unaries, pairwise, self._get_edges(x),
+                                                          n_iter=5, return_energy=True)
+                        objective -= energy
+                        dmu[np.ogrid[:dmu.shape[0]], y_hat_gco] -= 1
+                        dw += self._joint_features_full(x, y_hat_gco)
+
+                        jf = self._joint_features_full(x, y.full)
+                        objective -= np.dot(w, jf)
+                        dw -= jf
+
+                        y_hat_kappa, energy = optimize_kappa(y, mu[k], self.alpha, n_nodes, self.n_states)
                         objective += energy
-                        dw -= jf_gt
-                        dw += self._joint_features_full(x, y_hat_)
+                        dmu[np.ogrid[:dmu.shape[0]], y_hat_kappa] += 1
+
+                        mu[k] -= learning_rate2 * dmu
                     else:
                         dmu = np.zeros((n_nodes, self.n_states))
 
