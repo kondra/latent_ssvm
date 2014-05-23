@@ -16,7 +16,8 @@ from heterogenous_crf import inference_gco
 class OverWeak(object):
     def __init__(self, model, n_states, n_features, n_edge_features,
                  C=1, verbose=0, max_iter=200, check_every=1,
-                 complete_every=1, alpha=1, update_w_every=50):
+                 complete_every=1, alpha=1, update_w_every=50,
+                 update_mu=20):
         self.model = model
         self.n_states = n_states
         self.n_features = n_features
@@ -32,6 +33,7 @@ class OverWeak(object):
         self.alpha = alpha
         self.n_jobs = 4
         self.update_w_every = update_w_every
+        self.update_mu = update_mu
 
     def _get_edges(self, x):
         return x[1]
@@ -249,6 +251,38 @@ class OverWeak(object):
                         objective -= np.dot(w, jf)
                         dw -= jf
 
+#begin inner (can remove this to restore to previous state)
+                        E = 0
+                        Eprev = -100
+                        for j in xrange(self.update_mu):
+                            E = 0
+                            for i in xrange(len(chains[k])):
+                                y_hat[k][i], energy = optimize_chain(chains[k][i],
+                                                                     lambdas[k][i] + unaries[chains[k][i],:],
+                                                                     pairwise,
+                                                                     edge_index[k])
+                                E += energy
+
+
+                            lambda_sum = np.zeros((n_nodes, self.n_states), dtype=np.float64)
+
+                            for p in xrange(n_nodes):
+                                for i in contains_node[k][p]:
+                                    pos = np.where(chains[k][i] == p)[0][0]
+                                    lambda_sum[p, y_hat[k][i][pos]] += multiplier[k][p]
+
+                            for i in xrange(len(chains[k])):
+                                N = lambdas[k][i].shape[0]
+
+                                lambdas[k][i][np.ogrid[:N], y_hat[k][i]] -= learning_rate2
+                                lambdas[k][i] += learning_rate2 * lambda_sum[chains[k][i],:]
+
+                            if np.abs(E - Eprev) < 0.1:
+                                break
+                            Eprev = E
+#end inner
+
+#last one
                         for i in xrange(len(chains[k])):
                             y_hat[k][i], energy = optimize_chain(chains[k][i],
                                                                  lambdas[k][i] + unaries[chains[k][i],:],
@@ -260,6 +294,7 @@ class OverWeak(object):
                             objective += energy
 
                             dmu[chains[k][i], y_hat[k][i]] -= multiplier[k][chains[k][i]].flatten()
+#
 
                         y_hat_kappa, energy = optimize_kappa(y, mu[k], self.alpha, n_nodes, self.n_states)
 
