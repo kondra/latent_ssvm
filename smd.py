@@ -27,7 +27,6 @@ def trw(node_weights, edges, edge_weights, y,
         y_hat.append(np.zeros(n_states))
         _pairwise = np.zeros((n_edges, 2, 2))
         for i in xrange(n_edges):
-#            assert 0.5 * edge_weights[i,k,k] >= 0
             _pairwise[i,1,0] = _pairwise[i,0,1] = -0.5 * edge_weights[i,k,k]
         pairwise.append(_pairwise)
 

@@ -290,11 +290,12 @@ def plot_scores_for_full(result, save_dir=None, check_every=1):
         ind = np.arange(test_scores.shape[0])
 
     pl.figure(figsize=(5, 5), dpi=96)
-    pl.title('score')
+#    pl.title('score')
     pl.plot(ind, test_scores, label='test')
     pl.plot(ind, train_scores, c='r', label='train')
-    pl.ylabel('hamming loss')
+    pl.ylabel('score')
     pl.xlabel('iteration')
+    pl.ylim([0,1])
     if ind.shape < 10:
         pl.xticks(ind, ind * check_every)
     pl.legend(loc='lower right')
