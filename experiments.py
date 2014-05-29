@@ -335,7 +335,8 @@ def syntetic_over_weak(n_train_full=10, n_train=100, C=1, dataset=1,
                        test_method='gco', test_n_iter=5, relaxed_test=False,
                        alpha=1, n_iter=5, complete_every=10,
                        update_w_every=5, update_mu=20,
-                       use_latent_first_iter=500, undergenerating_weak=True):
+                       use_latent_first_iter=500, undergenerating_weak=False,
+                       smd=False):
     # save parameters as meta
     meta_data = locals()
 
@@ -362,7 +363,8 @@ def syntetic_over_weak(n_train_full=10, n_train=100, C=1, dataset=1,
                 train_scorer=lambda w: compute_score(crf_test, w, x_train, y_train_full, relaxed=relaxed_test),
                 test_scorer=lambda w: compute_score(crf_test, w, x_test, y_test, relaxed=relaxed_test),
                 decompose='grid',
-                use_latent_first_iter=use_latent_first_iter, undergenerating_weak=undergenerating_weak)
+                use_latent_first_iter=use_latent_first_iter, undergenerating_weak=undergenerating_weak,
+                smd=smd)
     stop = time()
     time_elapsed = stop - start
 
@@ -450,12 +452,13 @@ def msrc_over(n_train=276, C=100,
     return ExperimentResult(exp_data, meta_data)
 
 @experiment
-def msrc_over_weak(n_train_full=80, n_train=276, 
+def msrc_over_weak(n_train_full=40, n_train=276, 
                    C=100, alpha=0.1,
                    test_method='gco', test_n_iter=5, n_iter=5,
-                   max_iter=2000, verbose=1,
+                   max_iter=1000, verbose=1,
                    check_every=50, complete_every=100, update_w_every=50,
-                   relaxed_test=False):
+                   relaxed_test=False,
+                   use_latent_first_iter=100):
     # save parameters as meta
     meta_data = locals()
 
@@ -470,14 +473,15 @@ def msrc_over_weak(n_train_full=80, n_train=276,
                        max_iter=max_iter, verbose=verbose,
                        check_every=check_every, complete_every=complete_every, update_w_every=update_w_every)
 
-    x_train, y_train, y_train_full, x_test, y_test = load_msrc(n_train_full, n_train)
+    x_train, y_train, y_train_full, x_test, y_test = load_msrc(n_train_full, n_train, dense=True)
 
     logger.info('start training')
 
     start = time()
     trainer.fit(x_train, y_train,
                 train_scorer=lambda w: compute_score(crf_test, w, x_train, y_train_full, relaxed=relaxed_test),
-                test_scorer=lambda w: compute_score(crf_test, w, x_test, y_test, relaxed=relaxed_test))
+                test_scorer=lambda w: compute_score(crf_test, w, x_test, y_test, relaxed=relaxed_test),
+                use_latent_first_iter=use_latent_first_iter)
     stop = time()
     time_elapsed = stop - start
 
