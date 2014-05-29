@@ -54,7 +54,7 @@ def load_syntetic(dataset, n_full, n_train):
     return x_train, y_train, y_train_full, x_test, y_test
 
 
-def load_msrc(n_full, n_train):
+def load_msrc(n_full, n_train, dense=False):
     # loading & splitting MSRC dataset
     MSRC_DATA_PATH = '/home/dmitry/Documents/Thesis/data/msrc/msrc.hdf5'
 
@@ -77,6 +77,9 @@ def load_msrc(n_full, n_train):
         else:
             y_train.append(Label(None, np.unique(y[:, 0].astype(np.int32)),
                                 y[:, 1], False))
+
+    x_train = [(x[0].toarray(),x[1],x[2]) for x in x_train]
+    x_test = [(x[0].toarray(),x[1],x[2]) for x in x_test]
 
     return x_train, y_train, y_train_full, x_test, y_test
 
