@@ -12,6 +12,29 @@ from trw_utils import optimize_chain, optimize_kappa
 from graph_utils import decompose_graph, decompose_grid_graph
 from heterogenous_crf import inference_gco
 
+from pyqpbo import binary_general_graph
+from scipy.optimize import fmin_l_bfgs_b
+import scipy.sparse as sps
+
+def f(x, node_weights, pairwise, edges):
+    n_nodes, n_states = node_weights.shape
+
+    dual = 0
+    dlambda = np.zeros(n_nodes)
+
+    for k in xrange(n_states):
+        new_unaries = np.zeros((n_nodes, 2))
+        new_unaries[:,1] = node_weights[:,k] + x
+        y_hat, energy = binary_general_graph(edges, new_unaries, pairwise[k])
+        dual += 0.5 * energy
+        dlambda += y_hat
+    dlambda -= 1
+
+    dual -= np.sum(x)
+    #print dual
+
+    return -dual, -dlambda
+
 
 class OverWeak(object):
     def __init__(self, model, n_states, n_features, n_edge_features,
@@ -132,7 +155,7 @@ class OverWeak(object):
         return h
 
     def fit(self, X, Y, train_scorer, test_scorer, decompose='general',
-            use_latent_first_iter=500, undergenerating_weak=True):
+            use_latent_first_iter=500, undergenerating_weak=True, smd=False):
         self.logger.info('Initialization')
 
         if decompose == 'general':
@@ -145,10 +168,12 @@ class OverWeak(object):
         y_hat = []
         lambdas = []
         multiplier = []
+        xx = []
         mu = {}
         for k in xrange(len(X)):
             x, y = X[k], Y[k]
             n_nodes = x[0].shape[0]
+            xx.append(np.zeros(n_nodes))
             _lambdas = []
             _y_hat = []
             _multiplier = []
@@ -221,27 +246,28 @@ class OverWeak(object):
 #                        dw += self._joint_features_full(x, y_hat_)
 
 # use gco for first summand in DD
-                        dmu = np.zeros((n_nodes, self.n_states))
+                        for mm in xrange(10):
+                            dmu = np.zeros((n_nodes, self.n_states))
 
-                        unaries = self._get_unary_potentials(x, w) - mu[k]
-                        pairwise = self._get_pairwise_potentials(x, w)
+                            unaries = self._get_unary_potentials(x, w) - mu[k]
+                            pairwise = self._get_pairwise_potentials(x, w)
 
-                        y_hat_gco, energy = inference_gco(unaries, pairwise, self._get_edges(x),
-                                                          n_iter=5, return_energy=True)
-                        objective -= energy
-                        dmu[np.ogrid[:dmu.shape[0]], y_hat_gco] -= 1
-                        dw += self._joint_features_full(x, y_hat_gco)
+                            y_hat_gco, energy = inference_gco(unaries, pairwise, self._get_edges(x),
+                                                              n_iter=5, return_energy=True)
+                            objective -= energy
+                            dmu[np.ogrid[:dmu.shape[0]], y_hat_gco] -= 1
+                            dw += self._joint_features_full(x, y_hat_gco)
 
-                        jf = self._joint_features_full(x, y.full)
-                        objective -= np.dot(w, jf)
-                        dw -= jf
+                            jf = self._joint_features_full(x, y.full)
+                            objective -= np.dot(w, jf)
+                            dw -= jf
 
-                        y_hat_kappa, energy = optimize_kappa(y, mu[k], self.alpha, n_nodes, self.n_states)
-                        objective += energy
-                        dmu[np.ogrid[:dmu.shape[0]], y_hat_kappa] += 1
+                            y_hat_kappa, energy = optimize_kappa(y, mu[k], self.alpha, n_nodes, self.n_states)
+                            objective += energy
+                            dmu[np.ogrid[:dmu.shape[0]], y_hat_kappa] += 1
 
-                        mu[k] -= learning_rate2 * dmu
-                    else:
+                            mu[k] -= learning_rate2 * dmu
+                    elif not smd:
                         dmu = np.zeros((n_nodes, self.n_states))
 
                         unaries = (self._get_unary_potentials(x, w) - mu[k]) * multiplier[k]
@@ -302,6 +328,59 @@ class OverWeak(object):
                         dmu[np.ogrid[:dmu.shape[0]], y_hat_kappa] += 1
 
                         mu[k] -= learning_rate2 * dmu
+                    elif smd:
+                        if iteration > 1500:
+                            mMu = 10
+                        else:
+                            mMu = 1
+                        for mm in xrange(mMu):
+                            dmu = np.zeros((n_nodes, self.n_states))
+
+                            jf = self._joint_features_full(x, y.full)
+                            objective -= np.dot(w, jf)
+                            dw -= jf
+
+                            unaries = -self._get_unary_potentials(x, w) + mu[k]
+                            edge_weights = -self._get_pairwise_potentials(x, w)
+                            edges = self._get_edges(x)
+
+                            n_edges = edges.shape[0]
+                            y_hat2 = []
+                            pairwise = []
+                            for j in xrange(self.n_states):
+                                y_hat2.append(np.zeros(self.n_states))
+                                _pairwise = np.zeros((n_edges, 2, 2))
+                                for i in xrange(n_edges):
+                                    _pairwise[i,1,0] = _pairwise[i,0,1] = -0.5 * edge_weights[i,j,j]
+                                pairwise.append(_pairwise)
+                    
+                            for i in xrange(n_edges):
+                                e1, e2 = edges[i]
+                                unaries[e1,:] += 0.5 * np.diag(edge_weights[i,:,:])
+                                unaries[e2,:] += 0.5 * np.diag(edge_weights[i,:,:])
+                    
+                            xx[k], f_val, d = fmin_l_bfgs_b(f, xx[k],
+                                                            args=(unaries, pairwise, edges),
+                                                            maxiter=50,
+                                                            maxfun=50,
+                                                            pgtol=1e-2)
+                                
+                            E = np.sum(xx[k])
+                            for j in xrange(self.n_states):
+                                new_unaries = np.zeros((n_nodes, 2))
+                                new_unaries[:,1] = unaries[:,j] + xx[k]
+                                y_hat2[j], energy = binary_general_graph(edges, new_unaries, pairwise[j])
+                                E -= 0.5*energy
+                                dmu[:,j] -= y_hat2[j]
+
+                                dw += self._joint_features_full(x, y_hat2[j] * j)
+                    
+                            y_hat_kappa, energy = optimize_kappa(y, mu[k], 1, n_nodes, self.n_states)
+                            E += energy
+                            dmu[np.ogrid[:dmu.shape[0]], y_hat_kappa] += 1
+                            objective += E
+                    
+                            mu[k] -= learning_rate2 * dmu
 
             dw += w / self.C
 
@@ -313,6 +392,8 @@ class OverWeak(object):
 
             for k in xrange(len(X)):
                 if undergenerating_weak and not Y[k].full_labeled:
+                    continue
+                if smd and not Y[k].full_labeled:
                     continue
 
                 n_nodes = X[k][0].shape[0]
@@ -329,7 +410,7 @@ class OverWeak(object):
                     lambdas[k][i][np.ogrid[:N], y_hat[k][i]] -= learning_rate2
                     lambdas[k][i] += learning_rate2 * lambda_sum[chains[k][i],:]
 
-            if iteration % self.complete_every == 0:
+            if iteration % self.complete_every == 0 or iteration in [51, 80, 101, 130]:
                 self.logger.info('Complete latent variables')
                 Y_new = Parallel(n_jobs=self.n_jobs, verbose=0, max_nbytes=1e8)(
                     delayed(latent)(self.model, x, y, w) for x, y in zip(X, Y))
