@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import numpy as np
 import pylab as pl
 
@@ -5,11 +6,16 @@ import os
 
 import results
 
-# -*- coding: utf-8 -*-
-
 # old legacy stuff
 
 def plot_syntetic_full_weak():
+    from matplotlib import rc
+    rc('font',**{'family':'serif'})
+    rc('text', usetex=True)
+    rc('text.latex',unicode=True)
+    rc('text.latex',preamble='\usepackage[utf8]{inputenc}')
+    rc('text.latex',preamble='\usepackage[russian]{babel}')
+
     # full + weak plotter for syntetic data
     # on different full-labeled training set sizes
 #    os.chdir("results/syntetic")
@@ -29,14 +35,16 @@ def plot_syntetic_full_weak():
     full_y_min = np.min(full_results[:17, :5], axis=0)
     full_y_max = np.max(full_results[:17, :5], axis=0)
 
-    pl.errorbar([1, 2, 3, 4, 5], 1 - y, yerr=[y_max - y, y - y_min],
-                label='+weak')
-    pl.errorbar([1, 2, 3, 4, 5], 1 - full_y,
-                yerr=[full_y_max - full_y, full_y - full_y_min], label='full')
+    pl.errorbar([1, 2, 3, 4, 5], 1 - full_y, lw=2,
+                yerr=[full_y_max - full_y, full_y - full_y_min], label=u'Только полностью размеченные объекты')
+    pl.errorbar([1, 2, 3, 4, 5], 1 - y, yerr=[y_max - y, y - y_min], lw=2,
+                label=u'+слабая аннотация')
     pl.xticks(np.arange(0, 6), x)
 #    pl.title('Syntetic')
-    pl.xlabel(u'number of fully-labeled objects')
-    pl.ylabel('score')
+#    pl.xlabel(u'number of fully-labeled objects')
+#    pl.ylabel('score')
+    pl.xlabel(u'Число полностью размеченных объектов')
+    pl.ylabel(u'Точность')
     pl.ylim([0, 1])
     pl.xlim([0.5, 5.5])
     pl.legend(loc='lower right')
@@ -282,6 +290,13 @@ def plot_primal_objective(result, first_iter=1, save_dir=None, check_every=1):
         pl.savefig(save_dir + '/primal_objective.png')
 
 def plot_scores_for_full(result, save_dir=None, check_every=1):
+    from matplotlib import rc
+    rc('font',**{'family':'serif'})
+    rc('text', usetex=True)
+    rc('text.latex',unicode=True)
+    rc('text.latex',preamble='\usepackage[utf8]{inputenc}')
+    rc('text.latex',preamble='\usepackage[russian]{babel}')
+
     test_scores =  result.data['test_scores']
     train_scores =  result.data['train_scores']
     if check_every > 1:
@@ -291,10 +306,10 @@ def plot_scores_for_full(result, save_dir=None, check_every=1):
 
     pl.figure(figsize=(5, 5), dpi=96)
 #    pl.title('score')
-    pl.plot(ind, test_scores, label='test')
-    pl.plot(ind, train_scores, c='r', label='train')
-    pl.ylabel('score')
-    pl.xlabel('iteration')
+    pl.plot(ind, train_scores, c='r', label=u'Обучение', lw=2)
+    pl.plot(ind, test_scores, c='b', label=u'Контроль', lw=2)
+    pl.ylabel(u'Точность')
+    pl.xlabel(u'Номер итерации')
     pl.ylim([0,1])
     if ind.shape < 10:
         pl.xticks(ind, ind * check_every)
